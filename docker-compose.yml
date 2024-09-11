@@ -3,6 +3,8 @@ version: '3'
 services:
   main:
     image: sls-releases
+    security_opt:
+      - seccomp:unconfined
     environment:
       GITHUB_TOKEN: ${TOKEN}
     ports:
