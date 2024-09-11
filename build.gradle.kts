@@ -17,6 +17,12 @@ application {
     applicationDefaultJvmArgs = listOf("-Dio.ktor.development=$isDevelopment")
 }
 
+ktor {
+    docker {
+        localImageName.set("sls-releases")
+    }
+}
+
 repositories {
     mavenCentral()
 }

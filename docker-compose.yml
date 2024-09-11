@@ -1,0 +1,9 @@
+version: '3'
+
+services:
+  main:
+    image: sls-releases
+    environment:
+      GITHUB_TOKEN: ${TOKEN}
+    ports:
+      - "8080:8080"
