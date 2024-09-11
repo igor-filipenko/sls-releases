@@ -37,7 +37,6 @@ class GitHubClient(val token: String) {
             list = getPage(page++)
             list.stream()
                 .mapMulti(parser::parse)
-                .filter { r -> r.version is Version.Release }
                 .forEach { r -> result.add(r) }
         } while (list.isNotEmpty())
 

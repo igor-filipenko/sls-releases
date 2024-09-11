@@ -7,3 +7,23 @@ ktor:
 
 github:
     token: $GITHUB_TOKEN
+
+sls:
+    modules:
+        accumulations: "Накопления"
+        bonuses: "Бонусы"
+        communications: "Коммуникации"
+        coupons: "Купоны"
+        customers: "Покупатели"
+        discounts: "Скидки"
+        dwh: "Аналитика"
+        gateway: "gateway"
+        limits: "Лимиты"
+        offers: "Офферы"
+        purchases: "Чеки"
+        registrations: "Регистрации"
+        segments: "Сегменты"
+        triggers: "Триггеры"
+        scheduler: "Scheduler"
+        superset: "Superset"
+        superset-integration: "superset-integration"
