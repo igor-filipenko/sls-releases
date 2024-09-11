@@ -1,6 +1,5 @@
-package ru.crystals.sls.releases.plugins
+package ru.crystals.sls.releases.model
 
-import java.util.*
 import java.util.stream.Stream
 
 sealed interface Version : Comparable<Version> {

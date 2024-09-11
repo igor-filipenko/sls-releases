@@ -1,23 +1,24 @@
-package ru.crystals.sls.releases.plugins
+package ru.crystals.sls.releases.client
 
-import ru.crystals.sls.releases.client.GitHubRelease
+import ru.crystals.sls.releases.model.Release
+import ru.crystals.sls.releases.model.Version
 import java.util.function.Consumer
 import kotlin.test.*
 
-class ParserTest {
+class ConverterTest {
 
     val knownModules = hashMapOf(
         Pair("foo", "bar")
     )
 
-    val parser = Parser(knownModules)
+    val converter = Converter(knownModules)
 
     @Test
-    fun parse() {
+    fun convert() {
         val ghr = GitHubRelease("foo-v1.2.3", "http://some/url")
         val consumer = TestConsumer()
 
-        parser.parse(ghr, consumer)
+        converter.convert(ghr, consumer)
 
         assertNotNull(consumer.result)
         val release: Release = consumer.result!!
@@ -32,11 +33,11 @@ class ParserTest {
     }
 
     @Test
-    fun parseCandidate() {
+    fun convertCandidate() {
         val ghr = GitHubRelease("foo-v1.2.3-RC6", "http://some/url")
         val consumer = TestConsumer()
 
-        parser.parse(ghr, consumer)
+        converter.convert(ghr, consumer)
 
         assertNotNull(consumer.result)
         val release: Release = consumer.result!!
@@ -52,11 +53,11 @@ class ParserTest {
     }
 
     @Test
-    fun parseInvalid() {
+    fun convertInvalid() {
         val ghr = GitHubRelease("foo-v1.2.3-SNAPSHOT", "http://some/url")
         val consumer = TestConsumer()
 
-        parser.parse(ghr, consumer)
+        converter.convert(ghr, consumer)
 
         assertNull(consumer.result)
     }

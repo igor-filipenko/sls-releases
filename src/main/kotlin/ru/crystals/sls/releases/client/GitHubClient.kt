@@ -9,9 +9,7 @@ import io.ktor.client.plugins.logging.*
 import io.ktor.client.request.*
 import io.ktor.http.*
 import io.ktor.serialization.jackson.*
-import ru.crystals.sls.releases.plugins.Parser
-import ru.crystals.sls.releases.plugins.Release
-import ru.crystals.sls.releases.plugins.Version
+import ru.crystals.sls.releases.model.Release
 
 class GitHubClient(val token: String) {
     private val client = HttpClient(CIO) {
@@ -29,14 +27,14 @@ class GitHubClient(val token: String) {
         }
     }
 
-    suspend fun getReleases(parser: Parser): Collection<Release> {
+    suspend fun getReleases(converter: Converter): Collection<Release> {
         var page = 0
         var list: Collection<GitHubRelease>
         val result = ArrayList<Release>()
         do {
             list = getPage(page++)
             list.stream()
-                .mapMulti(parser::parse)
+                .mapMulti(converter::convert)
                 .forEach { r -> result.add(r) }
         } while (list.isNotEmpty())
 

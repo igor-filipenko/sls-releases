@@ -1,12 +1,13 @@
-package ru.crystals.sls.releases.plugins
+package ru.crystals.sls.releases.client
 
-import ru.crystals.sls.releases.client.GitHubRelease
+import ru.crystals.sls.releases.model.Release
+import ru.crystals.sls.releases.model.Version
 import java.util.function.Consumer
 import java.util.regex.Pattern
 
-class Parser(private val knownModules: Map<String, String>) {
+class Converter(private val knownModules: Map<String, String>) {
 
-    fun parse(ghr: GitHubRelease, consumer: Consumer<Release>) {
+    internal fun convert(ghr: GitHubRelease, consumer: Consumer<Release>) {
         val pattern = Pattern.compile("^(.*)-v(\\d+).(\\d+).(\\d+)(-RC\\d+)?\$")
         val matcher = pattern.matcher(ghr.tagName)
         if (!matcher.matches())
@@ -32,12 +33,14 @@ class Parser(private val knownModules: Map<String, String>) {
                 )
             }
 
-        consumer.accept(Release(
+        consumer.accept(
+            Release(
             name = moduleName,
             localizedName = knownModules.getOrDefault(moduleName, moduleName),
             version = version,
             url = ghr.url
-        ))
+        )
+        )
     }
 
 }

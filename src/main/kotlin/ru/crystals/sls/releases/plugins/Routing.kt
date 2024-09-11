@@ -6,10 +6,12 @@ import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import ru.crystals.sls.releases.client.GitHubClient
+import ru.crystals.sls.releases.client.Converter
+import ru.crystals.sls.releases.model.Release
+import ru.crystals.sls.releases.model.Version
 import java.util.stream.Collectors
-import kotlin.streams.toList
 
-fun Application.configureRouting(client: GitHubClient, parser: Parser) {
+fun Application.configureRouting(client: GitHubClient, parser: Converter) {
     routing {
         get("/sls/releases") {
             val useReleaseCandidates = this.context.parameters.get("rc").toBoolean()
