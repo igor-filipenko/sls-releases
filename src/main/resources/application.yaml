@@ -24,6 +24,6 @@ sls:
         registrations: "Регистрации"
         segments: "Сегменты"
         triggers: "Триггеры"
-        scheduler: "Scheduler"
-        superset: "Superset"
+        scheduler: "scheduler"
+        superset: "superset"
         superset-integration: "superset-integration"

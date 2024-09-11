@@ -6,6 +6,12 @@ data class Release(val name: String, val localizedName: String, val version: Ver
 
     fun asCsvRow(): String = "$name, $localizedName, $version, $url"
 
+    fun asHtmlRow(): String = """
+        <tr>
+          <td>$name</td><td>$localizedName</td><td><a href='$url'>$version</a></td>
+        </tr>
+    """.trimIndent()
+
     companion object : Comparator<Release> {
 
         override fun compare(l: Release?, r: Release?): Int = when {
