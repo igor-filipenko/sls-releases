@@ -9,8 +9,11 @@ import io.ktor.client.plugins.logging.*
 import io.ktor.client.request.*
 import io.ktor.http.*
 import io.ktor.serialization.jackson.*
+import ru.crystals.sls.releases.plugins.Parser
+import ru.crystals.sls.releases.plugins.Release
+import ru.crystals.sls.releases.plugins.Version
 
-class GitHubClient {
+class GitHubClient(val token: String) {
     private val client = HttpClient(CIO) {
         install(ContentNegotiation) {
             jackson(
@@ -26,15 +29,28 @@ class GitHubClient {
         }
     }
 
-    suspend fun getReleases(): Collection<GitHubRelease> {
-        val response = client.get("https://api.github.com/repos/crystalservice/SET10-Loyalty/releases?per_page=100") {
-            parameters {
-                append("per_page", "100")
-                append("page", "2")
-            }
+    suspend fun getReleases(parser: Parser): Collection<Release> {
+        var page = 0
+        var list: Collection<GitHubRelease>
+        val result = ArrayList<Release>()
+        do {
+            list = getPage(page++)
+            list.stream()
+                .mapMulti(parser::parse)
+                .filter { r -> r.version is Version.Release }
+                .forEach { r -> result.add(r) }
+        } while (list.isNotEmpty())
+
+        return result
+    }
+
+    private suspend fun getPage(page: Int) : Collection<GitHubRelease> {
+        val url = "https://api.github.com/repos/crystalservice/SET10-Loyalty/releases?per_page=100&page=$page"
+
+        val response = client.get(url) {
             headers {
                 append(HttpHeaders.Accept, "application/vnd.github+json")
-                append(HttpHeaders.Authorization, "Bearer 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")
+                append(HttpHeaders.Authorization, "Bearer $token")
                 append("X-GitHub-Api-Version", "2022-11-28")
             }
         }

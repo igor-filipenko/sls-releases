@@ -12,17 +12,27 @@ import java.util.stream.Collectors
 val knownModules = hashMapOf(
     Pair("accumulations", "Накопления"),
     Pair("bonuses", "Бонусы"),
+    Pair("communications", "Коммуникации"),
     Pair("coupons", "Купоны"),
     Pair("customers", "Покупатели"),
+    Pair("discounts", "Скидки"),
+    Pair("dwh", "Аналитика"),
+    Pair("gateway", "gateway"),
+    Pair("limits", "Лимиты"),
+    Pair("offers", "Офферы"),
+    Pair("purchases", "Чеки"),
+    Pair("registrations", "Регистрации"),
+    Pair("segments", "Сегменты"),
+    Pair("triggers", "Триггеры"),
+    Pair("scheduler", "Scheduler"),
+    Pair("superset", "Superset"),
+    Pair("superset-integration", "superset-integration"),
 )
 
 fun Application.configureRouting(client: GitHubClient) {
     routing {
         get("/sls/releases") {
-            val releases = client.getReleases()
-
-            val text = releases.stream()
-                .mapMulti(Parser(knownModules)::parse)
+            val text = client.getReleases(Parser(knownModules)).stream()
                 .collect(Collectors.groupingBy { r -> r.name })
                 .values.stream()
                 .map { list -> list.maxWith(Release.Companion) }
@@ -32,8 +42,4 @@ fun Application.configureRouting(client: GitHubClient) {
             call.respondText(text, ContentType.Text.Plain)
         }
     }
-}
-
-fun toRelease(ghr: GitHubRelease, consumer: Consumer<Release>) {
-
 }

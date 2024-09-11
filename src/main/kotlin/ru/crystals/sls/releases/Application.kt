@@ -9,5 +9,6 @@ fun main(args: Array<String>) {
 }
 
 fun Application.module() {
-    configureRouting(GitHubClient())
+    val token = environment.config.property("github.token").getString()
+    configureRouting(GitHubClient(token))
 }
