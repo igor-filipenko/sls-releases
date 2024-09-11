@@ -39,7 +39,7 @@ sealed interface Version : Comparable<Version> {
             thisNumber.compareTo(otherNumber)
         )
 
-        return results.takeWhile { r -> r != 0 }.findFirst().orElse(0)
+        return results.filter { r -> r != 0 }.findFirst().orElse(0)
     }
 
 }
