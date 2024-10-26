@@ -27,3 +27,5 @@ sls:
         scheduler: "scheduler"
         superset: "superset"
         superset-integration: "superset-integration"
+        frontend-loyalty: "Фронтенд Лояльности"
+        frontend-registrations: "Фронтенд Регистрации"

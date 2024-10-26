@@ -17,15 +17,14 @@ fun Application.configureRouting(client: GitHubClient, parser: Converter) {
             val useReleaseCandidates = this.context.parameters.get("rc").toBoolean()
             println("Using release candidates: $useReleaseCandidates")
 
-            fun byVersionType(r: Release): Boolean =
-                if (useReleaseCandidates) true else r.version is Version.Release
+            val byVersionType = { r: Release -> if (useReleaseCandidates) true else r.version is Version.Release }
 
             val result = client.getReleases(parser).stream()
-                .filter { r -> byVersionType(r) }
-                .collect(Collectors.groupingBy { r -> r.name })
+                .filter(byVersionType)
+                .collect(Collectors.groupingBy(Release::name))
                 .values.stream()
-                .map { list -> list.maxWith(Release.Companion) }
-                .sorted(Comparator.comparing { r -> r.name })
+                .map { it.maxWith(Release.Companion) }
+                .sorted(Comparator.comparing(Release::name))
 
             if (context.request.accept()!!.contains("html")) {
                 val text = result
