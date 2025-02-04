@@ -1,4 +1,4 @@
-package ru.crystals.sls.releases.model
+package ru.crystals.sls.releases.model.release
 
 import java.util.Objects
 

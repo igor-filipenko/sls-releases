@@ -1,4 +1,4 @@
-package ru.crystals.sls.releases.client
+package ru.crystals.sls.releases.client.github
 
 import com.fasterxml.jackson.databind.DeserializationFeature
 import io.ktor.client.*
@@ -9,7 +9,7 @@ import io.ktor.client.plugins.logging.*
 import io.ktor.client.request.*
 import io.ktor.http.*
 import io.ktor.serialization.jackson.*
-import ru.crystals.sls.releases.model.Release
+import ru.crystals.sls.releases.model.release.Release
 
 class GitHubClient(val token: String) {
     private val client = HttpClient(CIO) {

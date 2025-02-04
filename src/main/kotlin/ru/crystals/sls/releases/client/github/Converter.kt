@@ -1,7 +1,7 @@
-package ru.crystals.sls.releases.client
+package ru.crystals.sls.releases.client.github
 
-import ru.crystals.sls.releases.model.Release
-import ru.crystals.sls.releases.model.Version
+import ru.crystals.sls.releases.model.release.Release
+import ru.crystals.sls.releases.model.release.Version
 import java.util.function.Consumer
 import java.util.regex.Pattern
 

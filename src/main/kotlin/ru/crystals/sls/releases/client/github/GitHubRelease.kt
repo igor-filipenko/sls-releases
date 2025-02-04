@@ -1,4 +1,4 @@
-package ru.crystals.sls.releases.client
+package ru.crystals.sls.releases.client.github
 
 import com.fasterxml.jackson.annotation.JsonProperty
 
