@@ -17,6 +17,7 @@ sls:
         customers: "Покупатели"
         discounts: "Скидки"
         dwh: "Аналитика"
+        favorites: "Любимый товар"
         gateway: "gateway"
         limits: "Лимиты"
         offers: "Офферы"
