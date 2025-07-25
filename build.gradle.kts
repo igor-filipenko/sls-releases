@@ -41,6 +41,7 @@ dependencies {
     implementation("com.fasterxml.jackson.datatype:jackson-datatype-jsr310")
 
     implementation("org.unbroken-dome.base62:base62:1.1.0")
+    implementation("com.github.ben-manes.caffeine:caffeine:3.1.8")
 
     testImplementation("io.ktor:ktor-server-test-host-jvm")
     testImplementation("org.jetbrains.kotlin:kotlin-test-junit:$kotlin_version")

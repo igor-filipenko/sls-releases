@@ -6,9 +6,11 @@ data class Release(val name: String, val localizedName: String, val version: Ver
 
     fun asCsvRow(): String = "$name, $localizedName, $version, $url"
 
-    fun asHtmlRow(): String = """
+    fun asHtmlRow(baseUrl: String, useCandidate: Boolean): String = """
         <tr>
-          <td>$name</td><td>$localizedName</td><td><a href='$url'>$version</a></td>
+          <td><a href='$baseUrl/$name?rc=$useCandidate'>$name</a></td>
+          <td>$localizedName</td>
+          <td><a href='$url'>$version</a></td>
         </tr>
     """.trimIndent()
 
