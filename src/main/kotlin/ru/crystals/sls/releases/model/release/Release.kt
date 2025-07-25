@@ -2,7 +2,7 @@ package ru.crystals.sls.releases.model.release
 
 import java.util.Objects
 
-data class Release(val name: String, val localizedName: String, val version: Version, val url: String) {
+data class Release(val name: String, val localizedName: String, val version: Version, val url: String, val dateTime: String) {
 
     fun asCsvRow(): String = "$name, $localizedName, $version, $url"
 

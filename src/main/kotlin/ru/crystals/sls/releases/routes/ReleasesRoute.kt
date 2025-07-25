@@ -7,6 +7,7 @@ import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import ru.crystals.sls.releases.client.github.GitHubClient
 import ru.crystals.sls.releases.client.github.Converter
+import ru.crystals.sls.releases.model.release.ModuleRelease
 import ru.crystals.sls.releases.model.release.Release
 import ru.crystals.sls.releases.model.release.Version
 import java.util.stream.Collectors
@@ -52,21 +53,21 @@ fun Route.releasesRoute(client: GitHubClient, parser: Converter) {
             .filter(byVersionType)
             .filter(byModuleName)
             .sorted(Comparator.comparing(Release::version, Comparator.reverseOrder()))
+            .map { it -> ModuleRelease(it.version, it.url, it.dateTime) }
 
         if (context.request.accept()!!.contains("html")) {
-            val baseUrl = this.context.request.uri
             val text = result
                 .toList()
                 .joinToString(
                     prefix = "<table rules=\"all\">",
                     postfix = "</table>",
                     separator = "\n",
-                    transform = { release -> release.asHtmlRow(baseUrl, useReleaseCandidates) }
+                    transform = ModuleRelease::asHtmlRow
                 )
             call.respondText(text, ContentType.Text.Html)
         } else {
             val text = result
-                .map(Release::asCsvRow)
+                .map(ModuleRelease::asCsvRow)
                 .collect(Collectors.joining("\n")) + "\n"
             call.respondText(text, ContentType.Text.Plain)
         }

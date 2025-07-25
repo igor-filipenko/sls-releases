@@ -2,6 +2,10 @@ package ru.crystals.sls.releases.client.github
 
 import ru.crystals.sls.releases.model.release.Release
 import ru.crystals.sls.releases.model.release.Version
+import java.time.Instant
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
+import java.util.Locale
 import java.util.function.Consumer
 import java.util.regex.Pattern
 
@@ -35,12 +39,27 @@ class Converter(private val knownModules: Map<String, String>) {
 
         consumer.accept(
             Release(
-            name = moduleName,
-            localizedName = knownModules.getOrDefault(moduleName, moduleName),
-            version = version,
-            url = ghr.url
-        )
+                name = moduleName,
+                localizedName = knownModules.getOrDefault(moduleName, moduleName),
+                version = version,
+                url = ghr.url,
+                dateTime = convert(ghr.publishTime)
+            )
         )
     }
 
+    internal fun convert(publishTime: String): String {
+        return try {
+            val instant = Instant.parse(publishTime)
+
+            val formatter = DateTimeFormatter.ofPattern("MMM d, yyyy 'at' h:mm a")
+                .withLocale(Locale.getDefault())
+                .withZone(ZoneId.systemDefault())
+
+            formatter.format(instant)
+        } catch (e: Exception) {
+            println("Failed to parse date: $publishTime, $e")
+            publishTime
+        }
+    }
 }
