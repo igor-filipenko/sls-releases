@@ -17,7 +17,7 @@ class ConverterTest {
 
     @Test
     fun convert() {
-        val ghr = GitHubRelease("foo-v1.2.3", "http://some/url")
+        val ghr = GitHubRelease("foo-v1.2.3", "http://some/url", publishTime = "2023-01-01T00:00:00Z")
         val consumer = TestConsumer()
 
         converter.convert(ghr, consumer)
@@ -36,7 +36,7 @@ class ConverterTest {
 
     @Test
     fun convertCandidate() {
-        val ghr = GitHubRelease("foo-v1.2.3-RC6", "http://some/url")
+        val ghr = GitHubRelease("foo-v1.2.3-RC6", "http://some/url", publishTime = "2023-01-01T00:00:00Z")
         val consumer = TestConsumer()
 
         converter.convert(ghr, consumer)
@@ -56,7 +56,7 @@ class ConverterTest {
 
     @Test
     fun convertInvalid() {
-        val ghr = GitHubRelease("foo-v1.2.3-SNAPSHOT", "http://some/url")
+        val ghr = GitHubRelease("foo-v1.2.3-SNAPSHOT", "http://some/url", publishTime = "2023-01-01T00:00:00Z")
         val consumer = TestConsumer()
 
         converter.convert(ghr, consumer)
