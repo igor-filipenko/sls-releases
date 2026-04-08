@@ -12,50 +12,6 @@ use sls_releases::routes;
 use sls_releases::routes::releases::ReleasesState;
 use sls_releases::routes::transactions::TransactionsState;
 
-async fn body_string(resp: axum::response::Response) -> String {
-    let bytes = resp
-        .into_body()
-        .collect()
-        .await
-        .expect("body collect")
-        .to_bytes();
-    String::from_utf8(bytes.to_vec()).expect("utf-8")
-}
-
-fn csv_non_empty_line_count(s: &str) -> usize {
-    s.lines().filter(|l| !l.is_empty()).count()
-}
-
-fn releases_state_with_real_client(base_url: String) -> ReleasesState {
-    let mut known = std::collections::HashMap::new();
-    known.insert("a".to_string(), "A".to_string());
-    known.insert("b".to_string(), "B".to_string());
-    known.insert("m".to_string(), "M".to_string());
-
-    ReleasesState {
-        github: std::sync::Arc::new(GitHubClient::new_with_base_url(
-            "test-token".to_string(),
-            base_url,
-        )),
-        converter: std::sync::Arc::new(Converter::new(known)),
-    }
-}
-
-async fn stub_releases_page(server: &MockServer, page: i32, body: serde_json::Value, status: u16) {
-    let template = ResponseTemplate::new(status)
-        .insert_header("content-type", "application/json")
-        .insert_header("cache-control", "max-age=60")
-        .set_body_json(body);
-
-    Mock::given(method("GET"))
-        .and(path("/repos/crystalservice/SET10-Loyalty/releases"))
-        .and(query_param("per_page", "100"))
-        .and(query_param("page", page.to_string()))
-        .respond_with(template)
-        .mount(server)
-        .await;
-}
-
 #[tokio::test]
 async fn releases_list_csv_default_accept_and_line_count() {
     let server = MockServer::start().await;
@@ -319,5 +275,49 @@ async fn transactions_route_invalid_id_returns_400_and_message() {
     assert_eq!(resp.status(), StatusCode::BAD_REQUEST);
     let body = body_string(resp).await;
     assert_eq!(body, format!("Invalid transaction ID: '{bad}'"));
+}
+
+async fn body_string(resp: axum::response::Response) -> String {
+    let bytes = resp
+        .into_body()
+        .collect()
+        .await
+        .expect("body collect")
+        .to_bytes();
+    String::from_utf8(bytes.to_vec()).expect("utf-8")
+}
+
+fn csv_non_empty_line_count(s: &str) -> usize {
+    s.lines().filter(|l| !l.is_empty()).count()
+}
+
+fn releases_state_with_real_client(base_url: String) -> ReleasesState {
+    let mut known = std::collections::HashMap::new();
+    known.insert("a".to_string(), "A".to_string());
+    known.insert("b".to_string(), "B".to_string());
+    known.insert("m".to_string(), "M".to_string());
+
+    ReleasesState {
+        github: std::sync::Arc::new(GitHubClient::new_with_base_url(
+            "test-token".to_string(),
+            base_url,
+        )),
+        converter: std::sync::Arc::new(Converter::new(known)),
+    }
+}
+
+async fn stub_releases_page(server: &MockServer, page: i32, body: serde_json::Value, status: u16) {
+    let template = ResponseTemplate::new(status)
+        .insert_header("content-type", "application/json")
+        .insert_header("cache-control", "max-age=60")
+        .set_body_json(body);
+
+    Mock::given(method("GET"))
+        .and(path("/repos/crystalservice/SET10-Loyalty/releases"))
+        .and(query_param("per_page", "100"))
+        .and(query_param("page", page.to_string()))
+        .respond_with(template)
+        .mount(server)
+        .await;
 }
 
