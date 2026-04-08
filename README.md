@@ -6,7 +6,7 @@ Setup:
 rustc --version
 cargo --version
 
-# 1) Fill token in ./application.toml:
+# 1) Fill token in ./sls.toml:
 #    github.token = "your_token_here"
 #
 # 2) run

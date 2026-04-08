@@ -32,6 +32,7 @@ This file defines working conventions for agents and humans while rewriting this
 - Minimize dependencies unless they reduce complexity substantially (e.g., caching, base62).
 
 ## Workflow expectations
+- Compile continuously while editing (e.g. keep `cargo check` or `cargo watch -x check` running) so code is validated on every change.
 - Add tests when encoding behavior that is easy to regress (version ordering, tag parsing, output formatting).
 - Keep commits scoped (one behavior change per commit) once we start executing.
 

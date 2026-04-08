@@ -2,13 +2,21 @@ use std::sync::Arc;
 
 use axum::Router;
 use chrono::Offset;
+use clap::Parser;
 use tracing_subscriber::EnvFilter;
 
 use sls_releases::clients::github::client::{Converter, GitHubClient};
-use sls_releases::config::load_config;
+use sls_releases::config::load_config_from_path;
 use sls_releases::routes;
 use sls_releases::routes::releases::ReleasesState;
 use sls_releases::routes::transactions::TransactionsState;
+
+#[derive(Debug, Parser)]
+#[command(name = "sls-releases")]
+struct Cli {
+    #[arg(short = 'c', long = "config")]
+    config: Option<std::path::PathBuf>,
+}
 
 #[tokio::main]
 async fn main() {
@@ -18,7 +26,8 @@ async fn main() {
         )
         .init();
 
-    let cfg = load_config().expect("failed to load config");
+    let cli = Cli::parse();
+    let cfg = load_config_from_path(cli.config.as_deref()).expect("failed to load config");
 
     let github = Arc::new(GitHubClient::new(cfg.github_token));
     let converter = Arc::new(Converter::new(cfg.sls_modules));

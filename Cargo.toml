@@ -18,3 +18,4 @@ thiserror = "2"
 moka = { version = "0.12", features = ["future"] }
 http = "1"
 base62 = "2"
+clap = { version = "4", features = ["derive"] }
