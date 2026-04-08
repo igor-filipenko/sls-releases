@@ -20,14 +20,22 @@ struct CachedPage {
 #[derive(Debug, Clone)]
 pub struct GitHubClient {
     token: String,
+    base_url: String,
     http: reqwest::Client,
     page_cache: Cache<i32, CachedPage>,
 }
 
 impl GitHubClient {
     pub fn new(token: String) -> Self {
+        Self::new_with_base_url(token, "https://api.github.com")
+    }
+
+    pub fn new_with_base_url(token: String, base_url: impl Into<String>) -> Self {
+        let base_url = base_url.into();
+        let base_url = base_url.trim_end_matches('/').to_string();
         Self {
             token,
+            base_url,
             http: reqwest::Client::new(),
             page_cache: Cache::new(1024),
         }
@@ -60,9 +68,7 @@ impl GitHubClient {
             self.page_cache.invalidate(&page).await;
         }
 
-        let url = format!(
-            "https://api.github.com/repos/crystalservice/SET10-Loyalty/releases?per_page=100&page={page}"
-        );
+        let url = format!("{}/repos/crystalservice/SET10-Loyalty/releases?per_page=100&page={page}", self.base_url);
         let mut headers = HeaderMap::new();
         headers.insert(ACCEPT, "application/vnd.github+json".parse().unwrap());
         headers.insert(

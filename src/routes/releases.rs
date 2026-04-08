@@ -7,13 +7,14 @@ use axum::http::{HeaderMap, StatusCode, Uri};
 use axum::response::{IntoResponse, Response};
 use axum::routing::get;
 
-use crate::clients::github::client::{Converter, GitHubClient};
+use crate::clients::github::ReleasesClient;
+use crate::clients::github::client::Converter;
 use crate::domain::release::{ModuleRelease, Release, Version};
 use crate::render;
 
 #[derive(Clone)]
 pub struct ReleasesState {
-    pub github: Arc<GitHubClient>,
+    pub github: Arc<dyn ReleasesClient>,
     pub converter: Arc<Converter>,
 }
 
