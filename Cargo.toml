@@ -1,0 +1,26 @@
+[package]
+name = "sls-releases"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+axum = "0.8"
+tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
+config = "0.15"
+regex = "1"
+chrono = { version = "0.4", features = ["serde"] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt"] }
+thiserror = "2"
+moka = { version = "0.12", features = ["future"] }
+http = "1"
+base62 = "2"
+clap = { version = "4", features = ["derive"] }
+
+[dev-dependencies]
+tower = "0.5"
+http-body-util = "0.1"
+wiremock = "0.6"

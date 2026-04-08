@@ -3,22 +3,21 @@ Service to collect last releases for multiproject repo.
 
 Setup:
 ```shell
-sdk use java 17.0.1-open
-sdk use gradle 8.6
-gradle publishImageToLocalRegistry
-TOKEN=your_token_here docker-compose up
-```
-or
-```shell
-sdk use java 17.0.1-open
-sdk use gradle 8.6
-GITHUB_TOKEN=your_token_here gradle run
+rustc --version
+cargo --version
+
+# 1) Fill token in ./sls.toml:
+#    github.token = "your_token_here"
+#
+# 2) run
+cargo run
 ```
 then check
 ```shell
 curl 'http://0.0.0.0:8080/sls/releases?rc=true'
 ```
-or just
+
+HTML response:
 ```shell
-TOKEN=your_token_here just run
+curl -H 'Accept: text/html' 'http://0.0.0.0:8080/sls/releases?rc=true'
 ```
