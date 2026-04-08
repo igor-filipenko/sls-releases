@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use anyhow::Context;
 use axum::Router;
 use chrono::Offset;
 use clap::Parser;
@@ -20,7 +21,7 @@ struct Cli {
 }
 
 #[tokio::main]
-async fn main() {
+async fn main() -> anyhow::Result<()> {
     tracing_subscriber::fmt()
         .with_env_filter(
             EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info")),
@@ -28,9 +29,10 @@ async fn main() {
         .init();
 
     let cli = Cli::parse();
-    let cfg = load_config_from_path(cli.config.as_deref()).expect("failed to load config");
+    let cfg = load_config_from_path(cli.config.as_deref()).context("failed to load config")?;
 
-    let github: Arc<dyn ReleasesClient> = Arc::new(GitHubClient::new(cfg.github_token));
+    let github: Arc<dyn ReleasesClient> =
+        Arc::new(GitHubClient::new(cfg.github_token, cfg.github_user_agent));
     let converter = Arc::new(Converter::new(cfg.sls_modules));
 
     let app = Router::new()
@@ -47,6 +49,9 @@ async fn main() {
 
     let listener = tokio::net::TcpListener::bind(addr)
         .await
-        .expect("bind failed");
-    axum::serve(listener, app).await.expect("server failed");
+        .with_context(|| format!("bind failed ({addr})"))?;
+    axum::serve(listener, app)
+        .await
+        .context("server failed")?;
+    Ok(())
 }

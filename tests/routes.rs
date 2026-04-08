@@ -301,6 +301,7 @@ fn releases_state_with_real_client(base_url: String) -> ReleasesState {
         github: std::sync::Arc::new(GitHubClient::new_with_base_url(
             "test-token".to_string(),
             base_url,
+            "test-agent".to_string(),
         )),
         converter: std::sync::Arc::new(Converter::new(known)),
     }

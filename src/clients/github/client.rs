@@ -26,17 +26,20 @@ pub struct GitHubClient {
 }
 
 impl GitHubClient {
-    pub fn new(token: String) -> Self {
-        Self::new_with_base_url(token, "https://api.github.com")
+    pub fn new(token: String, user_agent: String) -> Self {
+        Self::new_with_base_url(token, "https://api.github.com", user_agent)
     }
 
-    pub fn new_with_base_url(token: String, base_url: impl Into<String>) -> Self {
+    pub fn new_with_base_url(token: String, base_url: impl Into<String>, user_agent: String) -> Self {
         let base_url = base_url.into();
         let base_url = base_url.trim_end_matches('/').to_string();
         Self {
             token,
             base_url,
-            http: reqwest::Client::new(),
+            http: reqwest::Client::builder()
+                .user_agent(user_agent)
+                .build()
+                .expect("failed to build reqwest client"),
             page_cache: Cache::new(1024),
         }
     }
@@ -80,6 +83,8 @@ impl GitHubClient {
         let resp = self.http.get(url).headers(headers).send().await?;
         let status = resp.status();
         if status.as_u16() != 200 {
+            let body = resp.text().await.unwrap_or_default();
+            tracing::debug!("unexpected status from GitHub API: {}, body: {}", status.as_u16(), body);
             return Err(GitHubError::UnexpectedStatus(status.as_u16()));
         }
 
@@ -92,6 +97,8 @@ impl GitHubClient {
         let expires_at = now + Duration::from_secs(max_age);
 
         let list: Vec<GitHubRelease> = resp.json().await?;
+        tracing::debug!("got {:?} items, expires at {:?}", list.len(), expires_at);
+        
         let value = Arc::new(list);
         self.page_cache
             .insert(
