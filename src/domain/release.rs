@@ -13,11 +13,6 @@ pub enum Version {
         patch: i32,
         number: i32,
     },
-    Milestone {
-        major: i32,
-        minor: i32,
-        patch: i32,
-    }
 }
 
 impl Version {
@@ -34,11 +29,6 @@ impl Version {
                 patch,
                 number,
             } => (major, minor, patch, number),
-            Version::Milestone {
-                major,
-                minor,
-                patch,
-            } => (major, minor, patch, i32::MAX)
         }
     }
 }
@@ -57,11 +47,6 @@ impl std::fmt::Display for Version {
                 patch,
                 number,
             } => write!(f, "{major}.{minor}.{patch}-RC{number}"),
-            Version::Milestone {
-                major,
-                minor,
-                patch,
-            } => write!(f, "{major}.{minor}.{patch}")
         }
     }
 }

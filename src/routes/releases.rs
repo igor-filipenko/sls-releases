@@ -23,7 +23,7 @@ pub struct ReleasesQuery {
     pub rc: Option<String>,
 }
 
-fn parse_boolean_flag(s: Option<&str>) -> bool {
+fn kotlin_to_boolean(s: Option<&str>) -> bool {
     matches!(s, Some(v) if v.eq_ignore_ascii_case("true"))
 }
 
@@ -48,7 +48,7 @@ async fn list_latest(
     uri: Uri,
     Query(q): Query<ReleasesQuery>,
 ) -> Result<Response, StatusCode> {
-    let use_rc = parse_boolean_flag(q.rc.as_deref());
+    let use_rc = kotlin_to_boolean(q.rc.as_deref());
 
     let all = state
         .github
@@ -103,7 +103,7 @@ async fn list_module(
     Path(module): Path<String>,
     Query(q): Query<ReleasesQuery>,
 ) -> Result<Response, StatusCode> {
-    let use_rc = parse_boolean_flag(q.rc.as_deref());
+    let use_rc = kotlin_to_boolean(q.rc.as_deref());
 
     let all = state
         .github

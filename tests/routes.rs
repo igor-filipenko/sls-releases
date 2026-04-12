@@ -36,6 +36,7 @@ fn releases_state_with_real_client(base_url: String) -> ReleasesState {
         github: std::sync::Arc::new(GitHubClient::new_with_base_url(
             "test-token".to_string(),
             base_url,
+            "test-agent".to_string(),
         )),
         converter: std::sync::Arc::new(Converter::new(known)),
     }
@@ -320,4 +321,3 @@ async fn transactions_route_invalid_id_returns_400_and_message() {
     let body = body_string(resp).await;
     assert_eq!(body, format!("Invalid transaction ID: '{bad}'"));
 }
-

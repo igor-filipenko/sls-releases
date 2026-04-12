@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::env;
 use std::path::Path;
 
 use serde::Deserialize;
@@ -7,6 +8,7 @@ use serde::Deserialize;
 pub struct AppConfig {
     pub server_port: u16,
     pub github_token: String,
+    pub github_user_agent: String,
     pub sls_modules: HashMap<String, String>,
 }
 
@@ -30,6 +32,8 @@ struct RawServer {
 struct RawGithub {
     #[serde(default)]
     token: String,
+    #[serde(default)]
+    user_agent: String,
 }
 
 #[derive(Debug, Default, Deserialize)]
@@ -46,7 +50,7 @@ const fn default_port() -> u16 {
 pub enum ConfigError {
     #[error("failed to load config: {0}")]
     Load(#[from] config::ConfigError),
-    #[error("github.token is empty (fill it in the config file before running)")]
+    #[error("github.token is empty (set it in config file or via GITHUB_TOKEN env var)")]
     MissingGithubToken,
 }
 
@@ -56,7 +60,6 @@ pub fn load_config() -> Result<AppConfig, ConfigError> {
 
 pub fn load_config_from_path(path: Option<&Path>) -> Result<AppConfig, ConfigError> {
     // By default reads `sls.toml` (or other supported extensions) from current directory (repo root).
-    // Token is intentionally NOT sourced from environment variables.
     let file = match path {
         Some(p) => config::File::from(p).required(true),
         None => config::File::with_name("sls").required(true),
@@ -65,13 +68,23 @@ pub fn load_config_from_path(path: Option<&Path>) -> Result<AppConfig, ConfigErr
     let c = config::Config::builder().add_source(file).build()?;
 
     let raw: RawConfig = c.try_deserialize()?;
-    if raw.github.token.trim().is_empty() {
+
+    // Highest priority: `GITHUB_TOKEN` env var.
+    let github_token = env::var("GITHUB_TOKEN").unwrap_or(raw.github.token);
+    if github_token.trim().is_empty() {
         return Err(ConfigError::MissingGithubToken);
     }
 
+    let github_user_agent = if raw.github.user_agent.trim().is_empty() {
+        format!("sls-releases/{}", env!("CARGO_PKG_VERSION"))
+    } else {
+        raw.github.user_agent
+    };
+
     Ok(AppConfig {
         server_port: raw.server.port,
-        github_token: raw.github.token,
+        github_token,
+        github_user_agent,
         sls_modules: raw.sls.modules,
     })
 }
