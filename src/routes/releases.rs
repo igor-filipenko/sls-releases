@@ -4,6 +4,7 @@ use std::sync::Arc;
 use axum::Router;
 use axum::extract::{Path, Query, State};
 use axum::http::{HeaderMap, StatusCode, Uri};
+use axum::response::Json;
 use axum::response::{IntoResponse, Response};
 use axum::routing::get;
 
@@ -30,6 +31,14 @@ fn accepts_html(headers: &HeaderMap) -> bool {
         .get(axum::http::header::ACCEPT)
         .and_then(|v| v.to_str().ok())
         .map(|s| s.contains("html"))
+        .unwrap_or(false)
+}
+
+fn accepts_json(headers: &HeaderMap) -> bool {
+    headers
+        .get(axum::http::header::ACCEPT)
+        .and_then(|v| v.to_str().ok())
+        .map(|s| s.contains("json"))
         .unwrap_or(false)
 }
 
@@ -85,6 +94,8 @@ async fn list_latest(
             render::releases_table_html(&base_url, use_rc, &latest),
         )
             .into_response())
+    } else if accepts_json(&headers) {
+        Ok(Json(latest).into_response())
     } else {
         Ok((
             StatusCode::OK,
@@ -133,6 +144,8 @@ async fn list_module(
             render::module_releases_table_html(&list),
         )
             .into_response())
+    } else if accepts_json(&headers) {
+        Ok(Json(list).into_response())
     } else {
         Ok((
             StatusCode::OK,

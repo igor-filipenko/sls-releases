@@ -199,6 +199,99 @@ async fn releases_list_html_accept_header_renders_html() {
 }
 
 #[tokio::test]
+async fn releases_list_json_accept_header_renders_json() {
+    let releases = vec![
+        r(
+            "a",
+            "A",
+            Version::Release {
+                major: 1,
+                minor: 0,
+                patch: 0,
+            },
+            "https://example/a100",
+        ),
+        r(
+            "b",
+            "B",
+            Version::Release {
+                major: 2,
+                minor: 0,
+                patch: 0,
+            },
+            "https://example/b200",
+        ),
+    ];
+
+    let app = routes::releases::router(releases_state_seeded(releases).await);
+
+    let resp = app
+        .oneshot(
+            Request::builder()
+                .uri("/sls/releases")
+                .header(axum::http::header::ACCEPT, "application/json")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(resp.status(), StatusCode::OK);
+    assert_eq!(
+        resp.headers()
+            .get(axum::http::header::CONTENT_TYPE)
+            .unwrap()
+            .to_str()
+            .unwrap(),
+        "application/json"
+    );
+
+    let body = body_string(resp).await;
+    let v: serde_json::Value = serde_json::from_str(&body).expect("valid JSON");
+    let arr = v.as_array().expect("array");
+    assert_eq!(arr.len(), 2);
+    assert_eq!(arr[0]["name"], "a");
+    assert_eq!(arr[1]["name"], "b");
+}
+
+#[tokio::test]
+async fn releases_list_accept_header_html_wins_over_json() {
+    let releases = vec![r(
+        "a",
+        "A",
+        Version::Release {
+            major: 1,
+            minor: 0,
+            patch: 0,
+        },
+        "https://example/a100",
+    )];
+
+    let app = routes::releases::router(releases_state_seeded(releases).await);
+
+    let resp = app
+        .oneshot(
+            Request::builder()
+                .uri("/sls/releases")
+                .header(axum::http::header::ACCEPT, "application/json, text/html")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(resp.status(), StatusCode::OK);
+    assert_eq!(
+        resp.headers()
+            .get(axum::http::header::CONTENT_TYPE)
+            .unwrap()
+            .to_str()
+            .unwrap(),
+        "text/html; charset=utf-8"
+    );
+}
+
+#[tokio::test]
 async fn releases_list_store_error_maps_to_502() {
     let app = routes::releases::router(ReleasesState {
         store: std::sync::Arc::new(AlwaysFailingStore),
@@ -262,5 +355,63 @@ async fn releases_module_csv_filters_and_orders_versions_desc() {
     // Ordering: version desc, so 2.0.0 should appear before 1.0.0.
     let first_line = body.lines().find(|l| !l.is_empty()).unwrap();
     assert!(first_line.contains("2.0.0"));
+}
+
+#[tokio::test]
+async fn releases_module_json_accept_header_renders_json_and_orders_versions_desc() {
+    let releases = vec![
+        r(
+            "m",
+            "M",
+            Version::Release {
+                major: 1,
+                minor: 0,
+                patch: 0,
+            },
+            "https://example/m100",
+        ),
+        r(
+            "m",
+            "M",
+            Version::Release {
+                major: 2,
+                minor: 0,
+                patch: 0,
+            },
+            "https://example/m200",
+        ),
+    ];
+
+    let app = routes::releases::router(releases_state_seeded(releases).await);
+
+    let resp = app
+        .oneshot(
+            Request::builder()
+                .uri("/sls/releases/m")
+                .header(axum::http::header::ACCEPT, "application/json")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(resp.status(), StatusCode::OK);
+    assert_eq!(
+        resp.headers()
+            .get(axum::http::header::CONTENT_TYPE)
+            .unwrap()
+            .to_str()
+            .unwrap(),
+        "application/json"
+    );
+
+    let body = body_string(resp).await;
+    let v: serde_json::Value = serde_json::from_str(&body).expect("valid JSON");
+    let arr = v.as_array().expect("array");
+    assert_eq!(arr.len(), 2);
+
+    // Ordering: version desc, so 2.0.0 should appear before 1.0.0.
+    assert_eq!(arr[0]["version"]["Release"]["major"], 2);
+    assert_eq!(arr[1]["version"]["Release"]["major"], 1);
 }
 
