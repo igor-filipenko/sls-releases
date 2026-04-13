@@ -21,8 +21,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { buildReleasesPath, fetchText } from "@/lib/api";
-import { parseReleasesCsv, type ReleaseRow } from "@/lib/csv";
+import { fetchReleases, type ReleaseRow } from "@/lib/api";
 
 function isRcVersion(version: string): boolean {
   return version.includes("-RC");
@@ -38,8 +37,7 @@ export function ReleasesPage() {
     setLoading(true);
     setError(null);
     try {
-      const text = await fetchText(buildReleasesPath(includeRc));
-      setRows(parseReleasesCsv(text));
+      setRows(await fetchReleases(includeRc));
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to load releases");
       setRows([]);
@@ -60,7 +58,7 @@ export function ReleasesPage() {
             SLS releases
           </h1>
           <p className="text-muted-foreground">
-            Latest module versions from GitHub, aligned with the API CSV format.
+            Latest module versions from GitHub.
           </p>
         </div>
         <div className="flex items-center gap-3 rounded-lg border bg-card px-4 py-2 shadow-sm">

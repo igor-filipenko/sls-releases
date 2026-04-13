@@ -20,11 +20,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { buildModuleReleasesPath, fetchText } from "@/lib/api";
-import {
-  parseModuleReleasesCsv,
-  type ModuleReleaseRow,
-} from "@/lib/csv";
+import { fetchModuleReleases, type ModuleReleaseRow } from "@/lib/api";
 
 export function ModulePage() {
   const { name: rawName } = useParams<{ name: string }>();
@@ -40,10 +36,7 @@ export function ModulePage() {
     setLoading(true);
     setError(null);
     try {
-      const text = await fetchText(
-        buildModuleReleasesPath(moduleName, includeRc)
-      );
-      setRows(parseModuleReleasesCsv(text));
+      setRows(await fetchModuleReleases(moduleName, includeRc));
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to load history");
       setRows([]);
@@ -98,8 +91,7 @@ export function ModulePage() {
         <CardHeader className="border-b bg-muted/30">
           <CardTitle>Versions</CardTitle>
           <CardDescription>
-            Parsed from CSV; timestamps use the server&apos;s local timezone
-            formatting.
+            Timestamps use the server&apos;s local timezone formatting.
           </CardDescription>
         </CardHeader>
         <CardContent className="p-0">
