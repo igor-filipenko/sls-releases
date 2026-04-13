@@ -1,5 +1,4 @@
 use std::sync::Arc;
-use std::time::Duration;
 
 use anyhow::Context;
 use axum::Router;
@@ -10,6 +9,7 @@ use tracing_subscriber::EnvFilter;
 use sls_releases::clients::github::client::{Converter, GitHubClient};
 use sls_releases::clients::github::ReleasesClient;
 use sls_releases::config::load_config_from_path;
+use sls_releases::jobs::sync::spawn_periodic_sync;
 use sls_releases::persistence::{ReleasesStore, SqliteReleasesStore};
 use sls_releases::routes;
 use sls_releases::routes::releases::ReleasesState;
@@ -42,23 +42,12 @@ async fn main() -> anyhow::Result<()> {
         .context("failed to open SQLite database")?;
     let store: Arc<dyn ReleasesStore> = Arc::new(sqlite);
 
-    let github_job = github.clone();
-    let converter_job = converter.clone();
-    let store_job = store.clone();
-    let interval_secs = cfg.refresh_interval_secs;
-    tokio::spawn(async move {
-        let mut interval = tokio::time::interval(Duration::from_secs(interval_secs));
-        loop {
-            interval.tick().await;
-            match github_job.get_releases(&converter_job).await {
-                Ok(releases) => match store_job.replace_all_releases(releases).await {
-                    Ok(()) => tracing::debug!("releases snapshot updated"),
-                    Err(e) => tracing::warn!(error = %e, "releases refresh failed to persist"),
-                },
-                Err(e) => tracing::warn!(error = %e, "releases refresh failed to fetch from GitHub"),
-            }
-        }
-    });
+    spawn_periodic_sync(
+        github.clone(),
+        converter.clone(),
+        store.clone(),
+        cfg.refresh_interval_secs,
+    );
 
     let app = Router::new()
         .merge(routes::releases::router(ReleasesState {
