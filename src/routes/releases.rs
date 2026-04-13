@@ -7,15 +7,13 @@ use axum::http::{HeaderMap, StatusCode, Uri};
 use axum::response::{IntoResponse, Response};
 use axum::routing::get;
 
-use crate::clients::github::ReleasesClient;
-use crate::clients::github::client::Converter;
 use crate::domain::release::{ModuleRelease, Release, Version};
+use crate::persistence::ReleasesStore;
 use crate::render;
 
 #[derive(Clone)]
 pub struct ReleasesState {
-    pub github: Arc<dyn ReleasesClient>,
-    pub converter: Arc<Converter>,
+    pub store: Arc<dyn ReleasesStore>,
 }
 
 #[derive(Debug, serde::Deserialize)]
@@ -51,8 +49,8 @@ async fn list_latest(
     let use_rc = kotlin_to_boolean(q.rc.as_deref());
 
     let all = state
-        .github
-        .get_releases(&state.converter)
+        .store
+        .get_all_releases()
         .await
         .map_err(|_| StatusCode::BAD_GATEWAY)?;
 
@@ -106,8 +104,8 @@ async fn list_module(
     let use_rc = kotlin_to_boolean(q.rc.as_deref());
 
     let all = state
-        .github
-        .get_releases(&state.converter)
+        .store
+        .get_all_releases()
         .await
         .map_err(|_| StatusCode::BAD_GATEWAY)?;
 

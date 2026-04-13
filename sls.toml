@@ -4,6 +4,12 @@ port = 8080
 [github]
 token = ""
 
+[persistence]
+sqlite_path = "releases.db"
+
+[refresh]
+interval_secs = 300
+
 [sls.modules]
 accumulations = "Накопления"
 bonuses = "Бонусы"
@@ -25,4 +31,3 @@ superset = "Superset"
 superset-integration = "Superset Интеграция"
 frontend-loyalty = "Фронтенд Лояльности"
 frontend-registrations = "Фронтенд Регистрации"
-

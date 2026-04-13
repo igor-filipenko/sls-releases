@@ -10,6 +10,8 @@ pub struct AppConfig {
     pub github_token: String,
     pub github_user_agent: String,
     pub sls_modules: HashMap<String, String>,
+    pub sqlite_path: String,
+    pub refresh_interval_secs: u64,
 }
 
 #[derive(Debug, Deserialize)]
@@ -20,6 +22,10 @@ struct RawConfig {
     github: RawGithub,
     #[serde(default)]
     sls: RawSls,
+    #[serde(default)]
+    persistence: RawPersistence,
+    #[serde(default)]
+    refresh: RawRefresh,
 }
 
 #[derive(Debug, Default, Deserialize)]
@@ -42,6 +48,18 @@ struct RawSls {
     modules: HashMap<String, String>,
 }
 
+#[derive(Debug, Default, Deserialize)]
+struct RawPersistence {
+    #[serde(default)]
+    sqlite_path: String,
+}
+
+#[derive(Debug, Default, Deserialize)]
+struct RawRefresh {
+    #[serde(default)]
+    interval_secs: u64,
+}
+
 const fn default_port() -> u16 {
     8080
 }
@@ -52,6 +70,10 @@ pub enum ConfigError {
     Load(#[from] config::ConfigError),
     #[error("github.token is empty (set it in config file or via GITHUB_TOKEN env var)")]
     MissingGithubToken,
+    #[error("persistence.sqlite_path is empty (set path to SQLite database file)")]
+    MissingSqlitePath,
+    #[error("refresh.interval_secs must be greater than zero")]
+    InvalidRefreshInterval,
 }
 
 pub fn load_config() -> Result<AppConfig, ConfigError> {
@@ -81,10 +103,22 @@ pub fn load_config_from_path(path: Option<&Path>) -> Result<AppConfig, ConfigErr
         raw.github.user_agent
     };
 
+    let sqlite_path = raw.persistence.sqlite_path.trim().to_string();
+    if sqlite_path.is_empty() {
+        return Err(ConfigError::MissingSqlitePath);
+    }
+
+    let refresh_interval_secs = raw.refresh.interval_secs;
+    if refresh_interval_secs == 0 {
+        return Err(ConfigError::InvalidRefreshInterval);
+    }
+
     Ok(AppConfig {
         server_port: raw.server.port,
         github_token,
         github_user_agent,
         sls_modules: raw.sls.modules,
+        sqlite_path,
+        refresh_interval_secs,
     })
 }

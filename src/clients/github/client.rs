@@ -1,10 +1,6 @@
 use std::collections::HashMap;
-use std::sync::Arc;
-use std::time::{Duration, Instant};
 
-use http::header::{ACCEPT, AUTHORIZATION, CACHE_CONTROL};
-use moka::future::Cache;
-use regex::Regex;
+use http::header::{ACCEPT, AUTHORIZATION};
 use reqwest::header::HeaderMap;
 use serde::Deserialize;
 
@@ -12,17 +8,10 @@ use crate::clients::github::parse::parse_tag;
 use crate::domain::release::Release;
 
 #[derive(Debug, Clone)]
-struct CachedPage {
-    value: Arc<Vec<GitHubRelease>>,
-    expires_at: Instant,
-}
-
-#[derive(Debug, Clone)]
 pub struct GitHubClient {
     token: String,
     base_url: String,
     http: reqwest::Client,
-    page_cache: Cache<i32, CachedPage>,
 }
 
 impl GitHubClient {
@@ -40,7 +29,6 @@ impl GitHubClient {
                 .user_agent(user_agent)
                 .build()
                 .expect("failed to build reqwest client"),
-            page_cache: Cache::new(1024),
         }
     }
 
@@ -62,15 +50,7 @@ impl GitHubClient {
         Ok(out)
     }
 
-    async fn get_page(&self, page: i32) -> Result<Arc<Vec<GitHubRelease>>, GitHubError> {
-        let now = Instant::now();
-        if let Some(cached) = self.page_cache.get(&page).await {
-            if now < cached.expires_at {
-                return Ok(cached.value);
-            }
-            self.page_cache.invalidate(&page).await;
-        }
-
+    async fn get_page(&self, page: i32) -> Result<Vec<GitHubRelease>, GitHubError> {
         let url = format!("{}/repos/crystalservice/SET10-Loyalty/releases?per_page=100&page={page}", self.base_url);
         let mut headers = HeaderMap::new();
         headers.insert(ACCEPT, "application/vnd.github+json".parse().unwrap());
@@ -88,37 +68,10 @@ impl GitHubClient {
             return Err(GitHubError::UnexpectedStatus(status.as_u16()));
         }
 
-        let max_age = resp
-            .headers()
-            .get(CACHE_CONTROL)
-            .and_then(|v| v.to_str().ok())
-            .and_then(parse_max_age_seconds)
-            .unwrap_or(60);
-        let expires_at = now + Duration::from_secs(max_age);
-
         let list: Vec<GitHubRelease> = resp.json().await?;
-        tracing::debug!("got {:?} items, expires at {:?}", list.len(), expires_at);
-
-        let value = Arc::new(list);
-        self.page_cache
-            .insert(
-                page,
-                CachedPage {
-                    value: value.clone(),
-                    expires_at,
-                },
-            )
-            .await;
-        Ok(value)
+        tracing::debug!("got {} items from GitHub page {}", list.len(), page);
+        Ok(list)
     }
-}
-
-fn parse_max_age_seconds(cache_control: &str) -> Option<u64> {
-    // Mirror Kotlin: Regex("max-age=(\\d+)").find(it)
-    static RE_STR: &str = r"max-age=(\d+)";
-    let re = Regex::new(RE_STR).ok()?;
-    let caps = re.captures(cache_control)?;
-    caps.get(1)?.as_str().parse().ok()
 }
 
 #[derive(Debug, Clone)]
