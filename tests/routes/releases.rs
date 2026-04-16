@@ -47,6 +47,13 @@ impl ReleasesStore for AlwaysFailingStore {
         Box::pin(async move { Err(PersistenceError::InvalidVersionKind("test".into())) })
     }
 
+    fn get_releases_by_name<'a>(
+        &'a self,
+        _name: &'a str,
+    ) -> Pin<Box<dyn Future<Output = Result<Vec<Release>, PersistenceError>> + Send + 'a>> {
+        Box::pin(async move { Err(PersistenceError::InvalidVersionKind("test".into())) })
+    }
+
     fn replace_all_releases<'a>(
         &'a self,
         _releases: Vec<Release>,

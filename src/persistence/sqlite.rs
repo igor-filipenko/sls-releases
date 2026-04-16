@@ -2,7 +2,7 @@ use sqlx::sqlite::{SqliteConnectOptions, SqlitePool, SqlitePoolOptions};
 use sqlx::Row;
 
 use crate::domain::release::Release;
-use crate::persistence::{PersistenceError, version_from_row, version_parts};
+use crate::persistence::{PersistenceError, version_from_row, version_kind_db_str, version_parts};
 
 const CREATE_TABLE: &str = r#"
 CREATE TABLE IF NOT EXISTS releases (
@@ -52,8 +52,42 @@ impl SqliteReleasesStore {
     pub async fn get_all_releases(&self) -> Result<Vec<Release>, PersistenceError> {
         let rows = sqlx::query(
             r#"SELECT name, localized_name, url, date_time, version_kind, major, minor, patch, rc_number
-               FROM releases"#,
+               FROM releases
+               ORDER BY name ASC"#,
         )
+        .fetch_all(&self.pool)
+        .await?;
+
+        let mut out = Vec::with_capacity(rows.len());
+        for row in rows {
+            let kind: String = row.try_get("version_kind")?;
+            let major: i32 = row.try_get("major")?;
+            let minor: i32 = row.try_get("minor")?;
+            let patch: i32 = row.try_get("patch")?;
+            let rc: Option<i32> = row.try_get("rc_number")?;
+            let version = version_from_row(&kind, major, minor, patch, rc)?;
+            out.push(Release {
+                name: row.try_get("name")?,
+                localized_name: row.try_get("localized_name")?,
+                version,
+                url: row.try_get("url")?,
+                date_time: row.try_get("date_time")?,
+            });
+        }
+        Ok(out)
+    }
+
+    pub async fn get_releases_by_name(
+        &self,
+        name: &str,
+    ) -> Result<Vec<Release>, PersistenceError> {
+        let rows = sqlx::query(
+            r#"SELECT name, localized_name, url, date_time, version_kind, major, minor, patch, rc_number
+               FROM releases
+               WHERE name = ?
+               ORDER BY major ASC, minor ASC, patch ASC, date_time ASC"#,
+        )
+        .bind(name)
         .fetch_all(&self.pool)
         .await?;
 
@@ -84,6 +118,7 @@ impl SqliteReleasesStore {
 
         for r in releases {
             let (kind, major, minor, patch, rc) = version_parts(&r.version);
+            let kind = version_kind_db_str(kind);
             sqlx::query(
                 r#"INSERT INTO releases
                    (name, localized_name, url, date_time, version_kind, major, minor, patch, rc_number)

@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 use std::sync::Arc;
 
 use axum::Router;
@@ -51,7 +51,7 @@ async fn list_latest(
         }
     });
 
-    let mut by_name: HashMap<String, Release> = HashMap::new();
+    let mut by_name: BTreeMap<String, Release> = BTreeMap::new();
     for r in filtered {
         by_name
             .entry(r.name.clone())
@@ -63,8 +63,7 @@ async fn list_latest(
             .or_insert(r);
     }
 
-    let mut latest: Vec<Release> = by_name.into_values().collect();
-    latest.sort_by(|a, b| a.name.cmp(&b.name));
+    let latest: Vec<Release> = by_name.into_values().collect();
 
     if accepts_html(&headers) {
         let base_url = uri.to_string();
@@ -96,7 +95,7 @@ async fn list_module(
 
     let all = state
         .store
-        .get_all_releases()
+        .get_releases_by_name(&module)
         .await
         .map_err(|_| StatusCode::BAD_GATEWAY)?;
 
@@ -106,7 +105,7 @@ async fn list_module(
             if !use_rc && !matches!(r.version, Version::Release { .. }) {
                 return false;
             }
-            r.name == module
+            true
         })
         .map(|r| ModuleRelease {
             version: r.version,

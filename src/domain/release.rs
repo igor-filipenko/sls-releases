@@ -1,5 +1,12 @@
 use std::cmp::Ordering;
 
+#[derive(Debug, Copy, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub enum ReleaseKind {
+    Milestone,
+    Production,
+    Candidate,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub enum Version {
     Release {
@@ -29,6 +36,13 @@ impl Version {
                 patch,
                 number,
             } => (major, minor, patch, number),
+        }
+    }
+
+    pub fn kind(&self) -> ReleaseKind {
+        match self {
+            Version::Release { .. } => ReleaseKind::Production,
+            Version::Candidate { .. } => ReleaseKind::Candidate,
         }
     }
 }

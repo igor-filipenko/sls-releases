@@ -5,7 +5,7 @@ pub use sqlite::SqliteReleasesStore;
 use std::future::Future;
 use std::pin::Pin;
 
-use crate::domain::release::{Release, Version};
+use crate::domain::release::{Release, ReleaseKind, Version};
 
 #[derive(Debug, thiserror::Error)]
 pub enum PersistenceError {
@@ -15,9 +15,22 @@ pub enum PersistenceError {
     InvalidVersionKind(String),
 }
 
+/// Persistence interface for fetching and storing releases.
+///
+/// ## Ordering contract
+/// Implementations must return releases **ordered by `name` (ascending)** in `get_all_releases`.
+/// Callers rely on this for stable output ordering without doing additional sorting.
 pub trait ReleasesStore: Send + Sync {
     fn get_all_releases<'a>(
         &'a self,
+    ) -> Pin<Box<dyn Future<Output = Result<Vec<Release>, PersistenceError>> + Send + 'a>>;
+
+    /// Returns all releases for a single module.
+    ///
+    /// The returned list is expected to be stable; callers may apply their own version ordering.
+    fn get_releases_by_name<'a>(
+        &'a self,
+        name: &'a str,
     ) -> Pin<Box<dyn Future<Output = Result<Vec<Release>, PersistenceError>> + Send + 'a>>;
 
     fn replace_all_releases<'a>(
@@ -33,6 +46,13 @@ impl ReleasesStore for SqliteReleasesStore {
         Box::pin(async move { SqliteReleasesStore::get_all_releases(self).await })
     }
 
+    fn get_releases_by_name<'a>(
+        &'a self,
+        name: &'a str,
+    ) -> Pin<Box<dyn Future<Output = Result<Vec<Release>, PersistenceError>> + Send + 'a>> {
+        Box::pin(async move { SqliteReleasesStore::get_releases_by_name(self, name).await })
+    }
+
     fn replace_all_releases<'a>(
         &'a self,
         releases: Vec<Release>,
@@ -44,7 +64,7 @@ impl ReleasesStore for SqliteReleasesStore {
 pub(crate) fn version_parts(
     v: &Version,
 ) -> (
-    &'static str,
+    ReleaseKind,
     i32,
     i32,
     i32,
@@ -55,13 +75,21 @@ pub(crate) fn version_parts(
             major,
             minor,
             patch,
-        } => ("release", *major, *minor, *patch, None),
+        } => (ReleaseKind::Milestone, *major, *minor, *patch, None),
         Version::Candidate {
             major,
             minor,
             patch,
             number,
-        } => ("candidate", *major, *minor, *patch, Some(*number)),
+        } => (ReleaseKind::Candidate, *major, *minor, *patch, Some(*number)),
+    }
+}
+
+pub(crate) fn version_kind_db_str(kind: ReleaseKind) -> &'static str {
+    match kind {
+        ReleaseKind::Milestone => "milestone",
+        ReleaseKind::Production => "production",
+        ReleaseKind::Candidate => "candidate",
     }
 }
 
@@ -73,7 +101,7 @@ pub(crate) fn version_from_row(
     rc: Option<i32>,
 ) -> Result<Version, PersistenceError> {
     match kind {
-        "release" => Ok(Version::Release {
+        "production" | "milestone" | "release" => Ok(Version::Release {
             major,
             minor,
             patch,
@@ -85,12 +113,6 @@ pub(crate) fn version_from_row(
             number: rc.ok_or_else(|| {
                 PersistenceError::InvalidVersionKind("candidate without rc_number".into())
             })?,
-        }),
-        // Legacy rows (if any); treat like release for ordering parity with old Milestone.
-        "milestone" => Ok(Version::Release {
-            major,
-            minor,
-            patch,
         }),
         other => Err(PersistenceError::InvalidVersionKind(other.to_string())),
     }
