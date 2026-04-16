@@ -5,7 +5,7 @@ use reqwest::header::HeaderMap;
 use serde::Deserialize;
 
 use crate::clients::github::parse::parse_tag;
-use crate::domain::release::Release;
+use crate::domain::release::{Release, ReleaseKind, Version};
 
 #[derive(Debug, Clone)]
 pub struct GitHubClient {
@@ -33,24 +33,42 @@ impl GitHubClient {
     }
 
     pub async fn get_releases(&self, converter: &Converter) -> Result<Vec<Release>, GitHubError> {
-        let mut page = 0;
         let mut out = Vec::new();
+
+        // GitHub releases.
+        let mut page = 0;
         loop {
-            let items = self.get_page(page).await?;
+            let items = self.get_releases_page(page).await?;
             if items.is_empty() {
                 break;
             }
             for ghr in items.iter() {
-                if let Some(r) = converter.convert(ghr) {
+                if let Some(r) = converter.convert_release(ghr) {
                     out.push(r);
                 }
             }
             page += 1;
         }
+
+        // GitHub milestones (all states).
+        let mut page = 0;
+        loop {
+            let items = self.get_milestones_page(page).await?;
+            if items.is_empty() {
+                break;
+            }
+            for m in items.iter() {
+                if let Some(r) = converter.convert_milestone(m) {
+                    out.push(r);
+                }
+            }
+            page += 1;
+        }
+
         Ok(out)
     }
 
-    async fn get_page(&self, page: i32) -> Result<Vec<GitHubRelease>, GitHubError> {
+    async fn get_releases_page(&self, page: i32) -> Result<Vec<GitHubRelease>, GitHubError> {
         let url = format!("{}/repos/crystalservice/SET10-Loyalty/releases?per_page=100&page={page}", self.base_url);
         let mut headers = HeaderMap::new();
         headers.insert(ACCEPT, "application/vnd.github+json".parse().unwrap());
@@ -72,6 +90,36 @@ impl GitHubClient {
         tracing::debug!("got {} items from GitHub page {}", list.len(), page);
         Ok(list)
     }
+
+    async fn get_milestones_page(&self, page: i32) -> Result<Vec<GitHubMilestone>, GitHubError> {
+        let url = format!(
+            "{}/repos/crystalservice/SET10-Loyalty/milestones?state=all&per_page=100&page={page}",
+            self.base_url
+        );
+        let mut headers = HeaderMap::new();
+        headers.insert(ACCEPT, "application/vnd.github+json".parse().unwrap());
+        headers.insert(
+            AUTHORIZATION,
+            format!("Bearer {}", self.token).parse().unwrap(),
+        );
+        headers.insert("X-GitHub-Api-Version", "2022-11-28".parse().unwrap());
+
+        let resp = self.http.get(url).headers(headers).send().await?;
+        let status = resp.status();
+        if status.as_u16() != 200 {
+            let body = resp.text().await.unwrap_or_default();
+            tracing::debug!(
+                "unexpected status from GitHub API: {}, body: {}",
+                status.as_u16(),
+                body
+            );
+            return Err(GitHubError::UnexpectedStatus(status.as_u16()));
+        }
+
+        let list: Vec<GitHubMilestone> = resp.json().await?;
+        tracing::debug!("got {} milestone items from GitHub page {}", list.len(), page);
+        Ok(list)
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -84,16 +132,36 @@ impl Converter {
         Self { known_modules }
     }
 
-    pub fn convert(&self, ghr: &GitHubRelease) -> Option<Release> {
+    pub fn convert_release(&self, ghr: &GitHubRelease) -> Option<Release> {
         let (module, version) = parse_tag(&ghr.tag_name)?;
         let localized_name = self.known_modules.get(&module)?.clone();
+        let kind = match version {
+            Version::Release { .. } => ReleaseKind::Production,
+            Version::Candidate { .. } => ReleaseKind::Candidate,
+        };
 
         Some(Release {
             name: module,
             localized_name,
+            kind,
             version,
             url: ghr.html_url.clone(),
             date_time: format_publish_time(&ghr.created_at),
+            closed: false,
+        })
+    }
+
+    pub fn convert_milestone(&self, m: &GitHubMilestone) -> Option<Release> {
+        let (module, version) = parse_tag(&m.title)?;
+        let localized_name = self.known_modules.get(&module)?.clone();
+        Some(Release {
+            name: module,
+            localized_name,
+            kind: ReleaseKind::Milestone,
+            version,
+            url: m.html_url.clone(),
+            date_time: format_publish_time(&m.created_at),
+            closed: m.state.eq_ignore_ascii_case("closed"),
         })
     }
 }
@@ -118,6 +186,17 @@ pub struct GitHubRelease {
     pub html_url: String,
     #[serde(rename = "created_at")]
     pub created_at: String,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct GitHubMilestone {
+    pub title: String,
+    #[serde(rename = "html_url")]
+    pub html_url: String,
+    #[serde(rename = "created_at")]
+    pub created_at: String,
+    /// GitHub returns "open" / "closed".
+    pub state: String,
 }
 
 #[derive(Debug, thiserror::Error)]

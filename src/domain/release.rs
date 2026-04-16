@@ -7,6 +7,17 @@ pub enum ReleaseKind {
     Candidate,
 }
 
+impl ReleaseKind {
+    fn rank(self) -> i32 {
+        match self {
+            // Production should win if versions are identical.
+            ReleaseKind::Production => 2,
+            ReleaseKind::Milestone => 1,
+            ReleaseKind::Candidate => 0,
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub enum Version {
     Release {
@@ -81,9 +92,12 @@ impl PartialOrd for Version {
 pub struct Release {
     pub name: String,
     pub localized_name: String,
+    pub kind: ReleaseKind,
     pub version: Version,
     pub url: String,
     pub date_time: String,
+    /// Only meaningful for `kind == ReleaseKind::Milestone`.
+    pub closed: bool,
 }
 
 impl Release {
@@ -107,7 +121,10 @@ impl Release {
 
 impl Ord for Release {
     fn cmp(&self, other: &Self) -> Ordering {
-        self.version.cmp(&other.version)
+        match self.version.cmp(&other.version) {
+            Ordering::Equal => self.kind.rank().cmp(&other.kind.rank()),
+            o => o,
+        }
     }
 }
 

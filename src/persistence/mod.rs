@@ -63,7 +63,7 @@ impl ReleasesStore for SqliteReleasesStore {
 }
 
 pub(crate) fn version_parts(
-    v: &Version,
+    r: &Release,
 ) -> (
     ReleaseKind,
     i32,
@@ -71,12 +71,13 @@ pub(crate) fn version_parts(
     i32,
     Option<i32>,
 ) {
-    match v {
+    let kind = r.kind;
+    match &r.version {
         Version::Release {
             major,
             minor,
             patch,
-        } => (ReleaseKind::Milestone, *major, *minor, *patch, None),
+        } => (kind, *major, *minor, *patch, None),
         Version::Candidate {
             major,
             minor,

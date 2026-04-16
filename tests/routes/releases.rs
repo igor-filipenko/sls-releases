@@ -6,6 +6,7 @@ use axum::http::{Request, StatusCode};
 use tower::ServiceExt;
 
 use sls_releases::domain::release::Release;
+use sls_releases::domain::release::ReleaseKind;
 use sls_releases::domain::release::Version;
 use sls_releases::persistence::{migrations, PersistenceError, ReleasesStore, SqliteReleasesStore};
 use sls_releases::routes;
@@ -32,13 +33,19 @@ async fn releases_state_seeded(releases: Vec<Release>) -> ReleasesState {
 }
 
 fn r(name: &str, localized_name: &str, version: Version, url: &str) -> Release {
+    let kind = match version {
+        Version::Release { .. } => ReleaseKind::Production,
+        Version::Candidate { .. } => ReleaseKind::Candidate,
+    };
     Release {
         name: name.to_string(),
         localized_name: localized_name.to_string(),
+        kind,
         version,
         url: url.to_string(),
         // These route tests don't validate date formatting; keep non-empty for realism.
         date_time: "2026-01-01T00:00:00Z".to_string(),
+        closed: false,
     }
 }
 
