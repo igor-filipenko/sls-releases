@@ -123,7 +123,7 @@ async fn list_module(
             render::module_releases_table_html(&list),
         )
             .into_response())
-    } else if accepts_json(&headers) {
+    } else if accepts_<json(&headers) {
         Ok(Json(list).into_response())
     } else {
         Ok((

@@ -7,7 +7,8 @@ CREATE TABLE IF NOT EXISTS releases (
     major INTEGER NOT NULL,
     minor INTEGER NOT NULL,
     patch INTEGER NOT NULL,
-    rc_number INTEGER NOT NULL
+    rc_number INTEGER NOT NULL,
+    closed BOOLEAN NOT NULL DEFAULT FALSE
 );
 
 CREATE UNIQUE INDEX IF NOT EXISTS releases_uniq
