@@ -8,7 +8,7 @@ use sls_releases::clients::github::client::{Converter, GitHubClient};
 use sls_releases::clients::github::ReleasesClient;
 use sls_releases::domain::release::Version;
 use sls_releases::jobs::sync::sync_releases_once;
-use sls_releases::persistence::{ReleasesStore, SqliteReleasesStore};
+use sls_releases::persistence::{migrations, ReleasesStore, SqliteReleasesStore};
 
 async fn stub_releases_page(server: &MockServer, page: i32, body: serde_json::Value, status: u16) {
     let template = ResponseTemplate::new(status)
@@ -51,6 +51,10 @@ async fn sync_once_mock_github_writes_sqlite() {
     ));
 
     let sqlite = SqliteReleasesStore::in_memory().await.expect("in-memory sqlite");
+    migrations::MIGRATOR
+        .run(sqlite.pool())
+        .await
+        .expect("run migrations");
     let store: Arc<dyn ReleasesStore> = Arc::new(sqlite);
 
     sync_releases_once(&github, &converter, &store).await;

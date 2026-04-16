@@ -7,7 +7,7 @@ use tower::ServiceExt;
 
 use sls_releases::domain::release::Release;
 use sls_releases::domain::release::Version;
-use sls_releases::persistence::{PersistenceError, ReleasesStore, SqliteReleasesStore};
+use sls_releases::persistence::{migrations, PersistenceError, ReleasesStore, SqliteReleasesStore};
 use sls_releases::routes;
 use sls_releases::routes::releases::ReleasesState;
 
@@ -17,6 +17,10 @@ async fn releases_state_seeded(releases: Vec<Release>) -> ReleasesState {
     let store = SqliteReleasesStore::in_memory()
         .await
         .expect("in-memory sqlite");
+    migrations::MIGRATOR
+        .run(store.pool())
+        .await
+        .expect("run migrations");
     store
         .replace_all_releases(releases)
         .await

@@ -1,4 +1,5 @@
 mod sqlite;
+pub mod migrations;
 
 pub use sqlite::SqliteReleasesStore;
 

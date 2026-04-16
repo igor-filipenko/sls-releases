@@ -4,20 +4,6 @@ use sqlx::Row;
 use crate::domain::release::Release;
 use crate::persistence::{PersistenceError, version_from_row, version_kind_db_str, version_parts};
 
-const CREATE_TABLE: &str = r#"
-CREATE TABLE IF NOT EXISTS releases (
-    name TEXT NOT NULL,
-    localized_name TEXT NOT NULL,
-    url TEXT NOT NULL,
-    date_time TEXT NOT NULL,
-    version_kind TEXT NOT NULL,
-    major INTEGER NOT NULL,
-    minor INTEGER NOT NULL,
-    patch INTEGER NOT NULL,
-    rc_number INTEGER
-);
-"#;
-
 #[derive(Clone)]
 pub struct SqliteReleasesStore {
     pool: SqlitePool,
@@ -35,7 +21,6 @@ impl SqliteReleasesStore {
         sqlx::query("PRAGMA journal_mode = WAL;")
             .execute(&pool)
             .await?;
-        sqlx::query(CREATE_TABLE).execute(&pool).await?;
         Ok(Self { pool })
     }
 
@@ -45,8 +30,11 @@ impl SqliteReleasesStore {
             .max_connections(1)
             .connect("sqlite::memory:")
             .await?;
-        sqlx::query(CREATE_TABLE).execute(&pool).await?;
         Ok(Self { pool })
+    }
+
+    pub fn pool(&self) -> &SqlitePool {
+        &self.pool
     }
 
     pub async fn get_all_releases(&self) -> Result<Vec<Release>, PersistenceError> {
@@ -64,7 +52,8 @@ impl SqliteReleasesStore {
             let major: i32 = row.try_get("major")?;
             let minor: i32 = row.try_get("minor")?;
             let patch: i32 = row.try_get("patch")?;
-            let rc: Option<i32> = row.try_get("rc_number")?;
+            let rc_raw: i32 = row.try_get("rc_number")?;
+            let rc = (rc_raw >= 0).then_some(rc_raw);
             let version = version_from_row(&kind, major, minor, patch, rc)?;
             out.push(Release {
                 name: row.try_get("name")?,
@@ -97,7 +86,8 @@ impl SqliteReleasesStore {
             let major: i32 = row.try_get("major")?;
             let minor: i32 = row.try_get("minor")?;
             let patch: i32 = row.try_get("patch")?;
-            let rc: Option<i32> = row.try_get("rc_number")?;
+            let rc_raw: i32 = row.try_get("rc_number")?;
+            let rc = (rc_raw >= 0).then_some(rc_raw);
             let version = version_from_row(&kind, major, minor, patch, rc)?;
             out.push(Release {
                 name: row.try_get("name")?,
@@ -122,7 +112,11 @@ impl SqliteReleasesStore {
             sqlx::query(
                 r#"INSERT INTO releases
                    (name, localized_name, url, date_time, version_kind, major, minor, patch, rc_number)
-                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"#,
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                   ON CONFLICT DO UPDATE SET
+                     localized_name = excluded.localized_name,
+                     url = excluded.url,
+                     date_time = excluded.date_time"#,
             )
             .bind(&r.name)
             .bind(&r.localized_name)
@@ -132,7 +126,7 @@ impl SqliteReleasesStore {
             .bind(major)
             .bind(minor)
             .bind(patch)
-            .bind(rc)
+            .bind(rc.unwrap_or(-1))
             .execute(&mut *tx)
             .await?;
         }

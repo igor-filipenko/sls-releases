@@ -10,7 +10,7 @@ use sls_releases::clients::github::client::{Converter, GitHubClient};
 use sls_releases::clients::github::ReleasesClient;
 use sls_releases::config::load_config_from_path;
 use sls_releases::jobs::sync::spawn_periodic_sync;
-use sls_releases::persistence::{ReleasesStore, SqliteReleasesStore};
+use sls_releases::persistence::{migrations, ReleasesStore, SqliteReleasesStore};
 use sls_releases::routes;
 use sls_releases::routes::releases::ReleasesState;
 use sls_releases::routes::transactions::TransactionsState;
@@ -40,6 +40,10 @@ async fn main() -> anyhow::Result<()> {
     let sqlite = SqliteReleasesStore::connect(&cfg.sqlite_path)
         .await
         .context("failed to open SQLite database")?;
+    migrations::MIGRATOR
+        .run(sqlite.pool())
+        .await
+        .context("failed to run SQLite migrations")?;
     let store: Arc<dyn ReleasesStore> = Arc::new(sqlite);
 
     spawn_periodic_sync(
