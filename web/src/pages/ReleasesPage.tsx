@@ -24,7 +24,11 @@ import {
 import { fetchReleases, type ReleaseRow } from "@/lib/api";
 
 function isRcVersion(version: string): boolean {
-  return version.includes("-RC");
+  return version.includes("Candidate");
+}
+
+function isMilestoneVersion(version: string): boolean {
+  return version.includes("Milestone");
 }
 
 export function ReleasesPage() {
@@ -113,8 +117,8 @@ export function ReleasesPage() {
                 <TableRow className="hover:bg-transparent">
                   <TableHead className="w-[140px]">Module</TableHead>
                   <TableHead>Name</TableHead>
-                  <TableHead className="w-[160px]">Version</TableHead>
-                  <TableHead className="text-right">Release</TableHead>
+                  <TableHead className="w-[450px]">Version</TableHead>
+                  <TableHead className="w-[10px]">GitHub</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -136,13 +140,14 @@ export function ReleasesPage() {
                         <span className="font-mono text-sm tabular-nums">
                           {r.version}
                         </span>
-                        {isRcVersion(r.version) ? (
-                          <Badge variant="secondary">RC</Badge>
+                        {isRcVersion(r.kind) ? (
+                          <Badge className="bg-yellow-400 text-black">RC</Badge>
+                        ) : isMilestoneVersion(r.kind) ? (
+                          <Badge className="bg-red-500 text-white">Milestone</Badge>
                         ) : (
-                          <Badge variant="default" className="font-normal">
-                            Stable
-                          </Badge>
+                          <Badge className="bg-green-500 text-white">Production</Badge>
                         )}
+                   
                       </div>
                     </TableCell>
                     <TableCell className="text-right">

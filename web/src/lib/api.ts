@@ -20,6 +20,7 @@ export type ReleaseRow = {
   name: string;
   localizedName: string;
   version: string;
+  kind: string;
   url: string;
 };
 
@@ -87,6 +88,7 @@ export async function fetchReleases(includeRc: boolean): Promise<ReleaseRow[]> {
     name: r.name,
     localizedName: r.localized_name,
     version: versionToString(r.version),
+    kind: r.kind,
     url: r.url,
   }));
 }
