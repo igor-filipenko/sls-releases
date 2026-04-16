@@ -8,7 +8,7 @@ use sls_releases::clients::github::client::{Converter, GitHubClient};
 use sls_releases::clients::github::ReleasesClient;
 use sls_releases::domain::release::{ReleaseKind, Version};
 use sls_releases::jobs::sync::sync_releases_once;
-use sls_releases::persistence::{migrations, ReleasesStore, SqliteReleasesStore};
+use sls_releases::persistence::{migrations, Include, ReleasesStore, SqliteReleasesStore};
 
 async fn stub_releases_page(server: &MockServer, page: i32, body: serde_json::Value, status: u16) {
     let template = ResponseTemplate::new(status)
@@ -86,7 +86,10 @@ async fn sync_once_mock_github_writes_sqlite() {
 
     sync_releases_once(&github, &converter, &store).await;
 
-    let mut all = store.get_all_releases().await.expect("read store");
+    let mut all = store
+        .get_all_releases(&Include::all())
+        .await
+        .expect("read store");
     all.sort_by(|x, y| x.name.cmp(&y.name));
 
     assert_eq!(all.len(), 4);

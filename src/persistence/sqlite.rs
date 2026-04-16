@@ -2,7 +2,7 @@ use sqlx::sqlite::{SqliteConnectOptions, SqlitePool, SqlitePoolOptions};
 use sqlx::Row;
 use tracing::log;
 use crate::domain::release::{Release, ReleaseKind};
-use crate::persistence::{PersistenceError, version_from_row, version_kind_db_str, version_parts};
+use crate::persistence::{Include, PersistenceError, version_from_row, version_kind_db_str, version_parts};
 
 #[derive(Clone)]
 pub struct SqliteReleasesStore {
@@ -37,14 +37,28 @@ impl SqliteReleasesStore {
         &self.pool
     }
 
-    pub async fn get_all_releases(&self) -> Result<Vec<Release>, PersistenceError> {
-        let rows = sqlx::query(
+    pub async fn get_all_releases(
+        &self,
+        include: &Include,
+    ) -> Result<Vec<Release>, PersistenceError> {
+        let mut sql = String::from(
             r#"SELECT name, localized_name, url, date_time, version_kind, major, minor, patch, rc_number, closed
-               FROM releases
-               ORDER BY name ASC"#,
-        )
-        .fetch_all(&self.pool)
-        .await?;
+               FROM releases"#,
+        );
+        let mut filters = Vec::new();
+        if !include.candidates {
+            filters.push("version_kind != 'candidate'");
+        }
+        if !include.milestones {
+            filters.push("version_kind != 'milestone'");
+        }
+        if !filters.is_empty() {
+            sql.push_str(" WHERE ");
+            sql.push_str(&filters.join(" AND "));
+        }
+        sql.push_str(" ORDER BY name ASC");
+
+        let rows = sqlx::query(&sql).fetch_all(&self.pool).await?;
 
         let mut out = Vec::with_capacity(rows.len());
         for row in rows {
@@ -81,16 +95,22 @@ impl SqliteReleasesStore {
     pub async fn get_releases_by_name(
         &self,
         name: &str,
+        include: &Include,
     ) -> Result<Vec<Release>, PersistenceError> {
-        let rows = sqlx::query(
+        let mut sql = String::from(
             r#"SELECT name, localized_name, url, date_time, version_kind, major, minor, patch, rc_number, closed
                FROM releases
-               WHERE name = ?
-               ORDER BY major ASC, minor ASC, patch ASC, date_time ASC"#,
-        )
-        .bind(name)
-        .fetch_all(&self.pool)
-        .await?;
+               WHERE name = ?"#,
+        );
+        if !include.candidates {
+            sql.push_str(" AND version_kind != 'candidate'");
+        }
+        if !include.milestones {
+            sql.push_str(" AND version_kind != 'milestone'");
+        }
+        sql.push_str(" ORDER BY major ASC, minor ASC, patch ASC, date_time ASC");
+
+        let rows = sqlx::query(&sql).bind(name).fetch_all(&self.pool).await?;
 
         let mut out = Vec::with_capacity(rows.len());
         for row in rows {

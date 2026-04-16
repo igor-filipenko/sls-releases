@@ -8,7 +8,7 @@ use tower::ServiceExt;
 use sls_releases::domain::release::Release;
 use sls_releases::domain::release::ReleaseKind;
 use sls_releases::domain::release::Version;
-use sls_releases::persistence::{migrations, PersistenceError, ReleasesStore, SqliteReleasesStore};
+use sls_releases::persistence::{migrations, Include, PersistenceError, ReleasesStore, SqliteReleasesStore};
 use sls_releases::routes;
 use sls_releases::routes::releases::ReleasesState;
 
@@ -49,11 +49,24 @@ fn r(name: &str, localized_name: &str, version: Version, url: &str) -> Release {
     }
 }
 
+fn ms(name: &str, localized_name: &str, version: Version, url: &str) -> Release {
+    Release {
+        name: name.to_string(),
+        localized_name: localized_name.to_string(),
+        kind: ReleaseKind::Milestone,
+        version,
+        url: url.to_string(),
+        date_time: "2026-01-01T00:00:00Z".to_string(),
+        closed: false,
+    }
+}
+
 struct AlwaysFailingStore;
 
 impl ReleasesStore for AlwaysFailingStore {
     fn get_all_releases<'a>(
         &'a self,
+        _include: &'a Include,
     ) -> Pin<Box<dyn Future<Output = Result<Vec<Release>, PersistenceError>> + Send + 'a>> {
         Box::pin(async move { Err(PersistenceError::InvalidVersionKind("test".into())) })
     }
@@ -61,6 +74,7 @@ impl ReleasesStore for AlwaysFailingStore {
     fn get_releases_by_name<'a>(
         &'a self,
         _name: &'a str,
+        _include: &'a Include,
     ) -> Pin<Box<dyn Future<Output = Result<Vec<Release>, PersistenceError>> + Send + 'a>> {
         Box::pin(async move { Err(PersistenceError::InvalidVersionKind("test".into())) })
     }
@@ -431,5 +445,172 @@ async fn releases_module_json_accept_header_renders_json_and_orders_versions_des
     // Ordering: version desc, so 2.0.0 should appear before 1.0.0.
     assert_eq!(arr[0]["version"]["Release"]["major"], 2);
     assert_eq!(arr[1]["version"]["Release"]["major"], 1);
+}
+
+#[tokio::test]
+async fn releases_list_csv_default_excludes_milestones() {
+    let releases = vec![
+        ms(
+            "edge",
+            "Edge",
+            Version::Release {
+                major: 9,
+                minor: 0,
+                patch: 0,
+            },
+            "https://example/ms900",
+        ),
+        r(
+            "stable",
+            "Stable",
+            Version::Release {
+                major: 1,
+                minor: 0,
+                patch: 0,
+            },
+            "https://example/s100",
+        ),
+    ];
+
+    let app = routes::releases::router(releases_state_seeded(releases).await);
+
+    let resp = app
+        .oneshot(Request::builder().uri("/sls/releases").body(Body::empty()).unwrap())
+        .await
+        .unwrap();
+
+    assert_eq!(resp.status(), StatusCode::OK);
+    let body = body_string(resp).await;
+    assert_eq!(csv_non_empty_line_count(&body), 1);
+    assert!(body.contains("stable"));
+    assert!(!body.contains("ms900"));
+}
+
+#[tokio::test]
+async fn releases_list_csv_rc_true_includes_milestones() {
+    let releases = vec![
+        ms(
+            "edge",
+            "Edge",
+            Version::Release {
+                major: 9,
+                minor: 0,
+                patch: 0,
+            },
+            "https://example/ms900",
+        ),
+        r(
+            "stable",
+            "Stable",
+            Version::Release {
+                major: 1,
+                minor: 0,
+                patch: 0,
+            },
+            "https://example/s100",
+        ),
+    ];
+
+    let app = routes::releases::router(releases_state_seeded(releases).await);
+
+    let resp = app
+        .oneshot(
+            Request::builder()
+                .uri("/sls/releases?rc=true")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(resp.status(), StatusCode::OK);
+    let body = body_string(resp).await;
+    assert_eq!(csv_non_empty_line_count(&body), 2);
+    assert!(body.contains("ms900"));
+    assert!(body.contains("s100"));
+}
+
+#[tokio::test]
+async fn releases_module_csv_default_excludes_milestones() {
+    let releases = vec![
+        r(
+            "m",
+            "M",
+            Version::Release {
+                major: 1,
+                minor: 0,
+                patch: 0,
+            },
+            "https://example/m100",
+        ),
+        ms(
+            "m",
+            "M",
+            Version::Release {
+                major: 2,
+                minor: 0,
+                patch: 0,
+            },
+            "https://example/m200ms",
+        ),
+    ];
+
+    let app = routes::releases::router(releases_state_seeded(releases).await);
+
+    let resp = app
+        .oneshot(Request::builder().uri("/sls/releases/m").body(Body::empty()).unwrap())
+        .await
+        .unwrap();
+
+    assert_eq!(resp.status(), StatusCode::OK);
+    let body = body_string(resp).await;
+    assert_eq!(csv_non_empty_line_count(&body), 1);
+    assert!(body.contains("m100"));
+    assert!(!body.contains("m200ms"));
+}
+
+#[tokio::test]
+async fn releases_module_csv_rc_true_includes_milestones_ordered_desc() {
+    let releases = vec![
+        r(
+            "m",
+            "M",
+            Version::Release {
+                major: 1,
+                minor: 0,
+                patch: 0,
+            },
+            "https://example/m100",
+        ),
+        ms(
+            "m",
+            "M",
+            Version::Release {
+                major: 2,
+                minor: 0,
+                patch: 0,
+            },
+            "https://example/m200ms",
+        ),
+    ];
+
+    let app = routes::releases::router(releases_state_seeded(releases).await);
+
+    let resp = app
+        .oneshot(
+            Request::builder()
+                .uri("/sls/releases/m?rc=true")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(resp.status(), StatusCode::OK);
+    let body = body_string(resp).await;
+    assert_eq!(csv_non_empty_line_count(&body), 2);
+    let first_line = body.lines().find(|l| !l.is_empty()).unwrap();
+    assert!(first_line.contains("2.0.0"));
+    assert!(body.contains("m200ms"));
 }
 

@@ -8,8 +8,8 @@ use axum::response::Json;
 use axum::response::{IntoResponse, Response};
 use axum::routing::get;
 
-use crate::domain::release::{ModuleRelease, Release, Version};
-use crate::persistence::ReleasesStore;
+use crate::domain::release::{ModuleRelease, Release};
+use crate::persistence::{Include, ReleasesStore};
 use crate::routes::render;
 
 #[derive(Clone)]
@@ -37,22 +37,16 @@ async fn list_latest(
 ) -> Result<Response, StatusCode> {
     let use_rc = to_boolean(q.rc.as_deref());
 
+    let include = releases_query_include(use_rc);
+
     let all = state
         .store
-        .get_all_releases()
+        .get_all_releases(&include)
         .await
         .map_err(|_| StatusCode::BAD_GATEWAY)?;
 
-    let filtered = all.into_iter().filter(|r| {
-        if use_rc {
-            true
-        } else {
-            matches!(r.version, Version::Release { .. })
-        }
-    });
-
     let mut by_name: BTreeMap<String, Release> = BTreeMap::new();
-    for r in filtered {
+    for r in all {
         by_name
             .entry(r.name.clone())
             .and_modify(|cur| {
@@ -93,20 +87,16 @@ async fn list_module(
 ) -> Result<Response, StatusCode> {
     let use_rc = to_boolean(q.rc.as_deref());
 
+    let include = releases_query_include(use_rc);
+
     let all = state
         .store
-        .get_releases_by_name(&module)
+        .get_releases_by_name(&module, &include)
         .await
         .map_err(|_| StatusCode::BAD_GATEWAY)?;
 
     let mut list: Vec<ModuleRelease> = all
         .into_iter()
-        .filter(|r| {
-            if !use_rc && !matches!(r.version, Version::Release { .. }) {
-                return false;
-            }
-            true
-        })
         .map(|r| ModuleRelease {
             version: r.version,
             url: r.url,
@@ -123,7 +113,7 @@ async fn list_module(
             render::module_releases_table_html(&list),
         )
             .into_response())
-    } else if accepts_<json(&headers) {
+    } else if accepts_json(&headers) {
         Ok(Json(list).into_response())
     } else {
         Ok((
@@ -153,4 +143,11 @@ fn accepts_json(headers: &HeaderMap) -> bool {
 
 fn to_boolean(s: Option<&str>) -> bool {
     matches!(s, Some(v) if v.eq_ignore_ascii_case("true"))
+}
+
+fn releases_query_include(use_rc: bool) -> Include {
+    Include {
+        candidates: use_rc,
+        milestones: use_rc,
+    }
 }

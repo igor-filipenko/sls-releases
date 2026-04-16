@@ -16,6 +16,22 @@ pub enum PersistenceError {
     InvalidVersionKind(String),
 }
 
+/// Controls which persisted rows are returned by read queries.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Include {
+    pub candidates: bool,
+    pub milestones: bool,
+}
+
+impl Include {
+    pub const fn all() -> Self {
+        Self {
+            candidates: true,
+            milestones: true,
+        }
+    }
+}
+
 /// Persistence interface for fetching and storing releases.
 ///
 /// ## Ordering contract
@@ -24,6 +40,7 @@ pub enum PersistenceError {
 pub trait ReleasesStore: Send + Sync {
     fn get_all_releases<'a>(
         &'a self,
+        include: &'a Include,
     ) -> Pin<Box<dyn Future<Output = Result<Vec<Release>, PersistenceError>> + Send + 'a>>;
 
     /// Returns all releases for a single module.
@@ -32,6 +49,7 @@ pub trait ReleasesStore: Send + Sync {
     fn get_releases_by_name<'a>(
         &'a self,
         name: &'a str,
+        include: &'a Include,
     ) -> Pin<Box<dyn Future<Output = Result<Vec<Release>, PersistenceError>> + Send + 'a>>;
 
     fn replace_all_releases<'a>(
@@ -43,15 +61,17 @@ pub trait ReleasesStore: Send + Sync {
 impl ReleasesStore for SqliteReleasesStore {
     fn get_all_releases<'a>(
         &'a self,
+        include: &'a Include,
     ) -> Pin<Box<dyn Future<Output = Result<Vec<Release>, PersistenceError>> + Send + 'a>> {
-        Box::pin(async move { SqliteReleasesStore::get_all_releases(self).await })
+        Box::pin(async move { SqliteReleasesStore::get_all_releases(self, include).await })
     }
 
     fn get_releases_by_name<'a>(
         &'a self,
         name: &'a str,
+        include: &'a Include,
     ) -> Pin<Box<dyn Future<Output = Result<Vec<Release>, PersistenceError>> + Send + 'a>> {
-        Box::pin(async move { SqliteReleasesStore::get_releases_by_name(self, name).await })
+        Box::pin(async move { SqliteReleasesStore::get_releases_by_name(self, name, include).await })
     }
 
     fn replace_all_releases<'a>(
