@@ -10,7 +10,7 @@ use axum::routing::get;
 
 use crate::domain::release::{ModuleRelease, Release, Version};
 use crate::persistence::ReleasesStore;
-use crate::render;
+use crate::routes::render;
 
 #[derive(Clone)]
 pub struct ReleasesState {
@@ -20,26 +20,6 @@ pub struct ReleasesState {
 #[derive(Debug, serde::Deserialize)]
 pub struct ReleasesQuery {
     pub rc: Option<String>,
-}
-
-fn kotlin_to_boolean(s: Option<&str>) -> bool {
-    matches!(s, Some(v) if v.eq_ignore_ascii_case("true"))
-}
-
-fn accepts_html(headers: &HeaderMap) -> bool {
-    headers
-        .get(axum::http::header::ACCEPT)
-        .and_then(|v| v.to_str().ok())
-        .map(|s| s.contains("html"))
-        .unwrap_or(false)
-}
-
-fn accepts_json(headers: &HeaderMap) -> bool {
-    headers
-        .get(axum::http::header::ACCEPT)
-        .and_then(|v| v.to_str().ok())
-        .map(|s| s.contains("json"))
-        .unwrap_or(false)
 }
 
 pub fn router(state: ReleasesState) -> Router {
@@ -55,7 +35,7 @@ async fn list_latest(
     uri: Uri,
     Query(q): Query<ReleasesQuery>,
 ) -> Result<Response, StatusCode> {
-    let use_rc = kotlin_to_boolean(q.rc.as_deref());
+    let use_rc = to_boolean(q.rc.as_deref());
 
     let all = state
         .store
@@ -112,7 +92,7 @@ async fn list_module(
     Path(module): Path<String>,
     Query(q): Query<ReleasesQuery>,
 ) -> Result<Response, StatusCode> {
-    let use_rc = kotlin_to_boolean(q.rc.as_deref());
+    let use_rc = to_boolean(q.rc.as_deref());
 
     let all = state
         .store
@@ -154,4 +134,24 @@ async fn list_module(
         )
             .into_response())
     }
+}
+
+fn accepts_html(headers: &HeaderMap) -> bool {
+    headers
+        .get(axum::http::header::ACCEPT)
+        .and_then(|v| v.to_str().ok())
+        .map(|s| s.contains("html"))
+        .unwrap_or(false)
+}
+
+fn accepts_json(headers: &HeaderMap) -> bool {
+    headers
+        .get(axum::http::header::ACCEPT)
+        .and_then(|v| v.to_str().ok())
+        .map(|s| s.contains("json"))
+        .unwrap_or(false)
+}
+
+fn to_boolean(s: Option<&str>) -> bool {
+    matches!(s, Some(v) if v.eq_ignore_ascii_case("true"))
 }
