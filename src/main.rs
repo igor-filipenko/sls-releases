@@ -16,12 +16,24 @@ use sls_releases::routes::releases::ReleasesState;
 use sls_releases::routes::transactions::TransactionsState;
 
 #[derive(Debug, Parser)]
-#[command(name = "sls-releases")]
+#[command(
+    name = "sls-releases",
+    version,
+    about = "HTTP service for Set Loyalty releases control",
+    long_about = "Serves release and transaction endpoints backed by SQLite and GitHub.\n\
+\n\
+Without --config, the process reads GITHUB_TOKEN from the environment and uses simple defaults \
+(see --port and --database). With --config, settings load from a TOML file; GITHUB_TOKEN still \
+overrides github.token when set."
+)]
 struct Cli {
+    /// TOML file with [server], [github], [persistence], [refresh], and [sls] sections.
     #[arg(short = 'c', long = "config")]
     config: Option<std::path::PathBuf>,
+    /// TCP port to listen on when `--config` is not used [default: 8080].
     #[arg(short = 'p', long = "port")]
     port: Option<u16>,
+    /// SQLite database file path when `--config` is not used [default: releases.db].
     #[arg(short = 'd', long = "database")]
     database: Option<String>,
 }
