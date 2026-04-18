@@ -1,7 +1,6 @@
 use std::collections::{HashMap, HashSet};
-use std::future::Future;
-use std::pin::Pin;
 
+use async_trait::async_trait;
 use axum::body::Body;
 use axum::http::{Request, StatusCode};
 use tower::ServiceExt;
@@ -9,7 +8,9 @@ use tower::ServiceExt;
 use sls_releases::domain::release::Release;
 use sls_releases::domain::release::ReleaseKind;
 use sls_releases::domain::release::Version;
-use sls_releases::persistence::{migrations, Include, PersistenceError, ReleasesStore, SqliteReleasesStore};
+use sls_releases::persistence::{
+    Include, PersistenceError, ReleasesStore, SqliteReleasesStore, migrations,
+};
 use sls_releases::routes;
 use sls_releases::routes::releases::ReleasesState;
 
@@ -77,34 +78,26 @@ fn ms(name: &str, localized_name: &str, version: Version, url: &str) -> Release 
 
 struct AlwaysFailingStore;
 
+#[async_trait]
 impl ReleasesStore for AlwaysFailingStore {
-    fn get_all_releases<'a>(
-        &'a self,
-        _include: &'a Include,
-    ) -> Pin<Box<dyn Future<Output = Result<Vec<Release>, PersistenceError>> + Send + 'a>> {
-        Box::pin(async move { Err(PersistenceError::InvalidVersionKind("test".into())) })
+    async fn get_all_releases(&self, _include: &Include) -> Result<Vec<Release>, PersistenceError> {
+        Err(PersistenceError::InvalidVersionKind("test".into()))
     }
 
-    fn get_releases_by_name<'a>(
-        &'a self,
-        _name: &'a str,
-        _include: &'a Include,
-    ) -> Pin<Box<dyn Future<Output = Result<Vec<Release>, PersistenceError>> + Send + 'a>> {
-        Box::pin(async move { Err(PersistenceError::InvalidVersionKind("test".into())) })
+    async fn get_releases_by_name(
+        &self,
+        _name: &str,
+        _include: &Include,
+    ) -> Result<Vec<Release>, PersistenceError> {
+        Err(PersistenceError::InvalidVersionKind("test".into()))
     }
 
-    fn replace_all_releases<'a>(
-        &'a self,
-        _releases: Vec<Release>,
-    ) -> Pin<Box<dyn Future<Output = Result<(), PersistenceError>> + Send + 'a>> {
-        Box::pin(async move { Ok(()) })
+    async fn replace_all_releases(&self, _releases: Vec<Release>) -> Result<(), PersistenceError> {
+        Ok(())
     }
 
-    fn load_module_localizations<'a>(
-        &'a self,
-    ) -> Pin<Box<dyn Future<Output = Result<HashMap<String, String>, PersistenceError>> + Send + 'a>>
-    {
-        Box::pin(async move { Err(PersistenceError::InvalidVersionKind("test".into())) })
+    async fn load_module_localizations(&self) -> Result<HashMap<String, String>, PersistenceError> {
+        Err(PersistenceError::InvalidVersionKind("test".into()))
     }
 }
 
@@ -147,7 +140,12 @@ async fn releases_list_csv_default_accept_and_line_count() {
     let app = routes::releases::router(releases_state_seeded(releases).await);
 
     let resp = app
-        .oneshot(Request::builder().uri("/sls/releases").body(Body::empty()).unwrap())
+        .oneshot(
+            Request::builder()
+                .uri("/sls/releases")
+                .body(Body::empty())
+                .unwrap(),
+        )
         .await
         .unwrap();
 
@@ -351,7 +349,12 @@ async fn releases_list_store_error_maps_to_502() {
     });
 
     let resp = app
-        .oneshot(Request::builder().uri("/sls/releases").body(Body::empty()).unwrap())
+        .oneshot(
+            Request::builder()
+                .uri("/sls/releases")
+                .body(Body::empty())
+                .unwrap(),
+        )
         .await
         .unwrap();
 
@@ -396,7 +399,12 @@ async fn releases_module_csv_filters_and_orders_versions_desc() {
     let app = routes::releases::router(releases_state_seeded(releases).await);
 
     let resp = app
-        .oneshot(Request::builder().uri("/sls/releases/m").body(Body::empty()).unwrap())
+        .oneshot(
+            Request::builder()
+                .uri("/sls/releases/m")
+                .body(Body::empty())
+                .unwrap(),
+        )
         .await
         .unwrap();
 
@@ -496,7 +504,12 @@ async fn releases_list_csv_default_excludes_milestones() {
     let app = routes::releases::router(releases_state_seeded(releases).await);
 
     let resp = app
-        .oneshot(Request::builder().uri("/sls/releases").body(Body::empty()).unwrap())
+        .oneshot(
+            Request::builder()
+                .uri("/sls/releases")
+                .body(Body::empty())
+                .unwrap(),
+        )
         .await
         .unwrap();
 
@@ -579,7 +592,12 @@ async fn releases_module_csv_default_excludes_milestones() {
     let app = routes::releases::router(releases_state_seeded(releases).await);
 
     let resp = app
-        .oneshot(Request::builder().uri("/sls/releases/m").body(Body::empty()).unwrap())
+        .oneshot(
+            Request::builder()
+                .uri("/sls/releases/m")
+                .body(Body::empty())
+                .unwrap(),
+        )
         .await
         .unwrap();
 
@@ -634,4 +652,3 @@ async fn releases_module_csv_rc_true_includes_milestones_ordered_desc() {
     assert!(first_line.contains("2.0.0"));
     assert!(body.contains("m200ms"));
 }
-

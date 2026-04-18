@@ -1,24 +1,19 @@
 pub mod client;
 pub mod parse;
 
-use std::future::Future;
-use std::pin::Pin;
+use async_trait::async_trait;
 
 use crate::clients::github::client::{Converter, GitHubClient, GitHubError};
 use crate::domain::release::Release;
 
+#[async_trait]
 pub trait ReleasesClient: Send + Sync {
-    fn get_releases<'a>(
-        &'a self,
-        converter: &'a Converter,
-    ) -> Pin<Box<dyn Future<Output = Result<Vec<Release>, GitHubError>> + Send + 'a>>;
+    async fn get_releases(&self, converter: &Converter) -> Result<Vec<Release>, GitHubError>;
 }
 
+#[async_trait]
 impl ReleasesClient for GitHubClient {
-    fn get_releases<'a>(
-        &'a self,
-        converter: &'a Converter,
-    ) -> Pin<Box<dyn Future<Output = Result<Vec<Release>, GitHubError>> + Send + 'a>> {
-        Box::pin(async move { GitHubClient::get_releases(self, converter).await })
+    async fn get_releases(&self, converter: &Converter) -> Result<Vec<Release>, GitHubError> {
+        GitHubClient::get_releases(self, converter).await
     }
 }

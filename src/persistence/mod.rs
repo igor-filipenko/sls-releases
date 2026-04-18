@@ -1,13 +1,12 @@
-mod sqlite;
 pub mod migrations;
+mod sqlite;
 
 pub use sqlite::SqliteReleasesStore;
 
 use std::collections::HashMap;
-use std::future::Future;
-use std::pin::Pin;
 
 use crate::domain::release::{Release, ReleaseKind, Version};
+use async_trait::async_trait;
 
 #[derive(Debug, thiserror::Error)]
 pub enum PersistenceError {
@@ -38,72 +37,49 @@ impl Include {
 /// ## Ordering contract
 /// Implementations must return releases **ordered by `name` (ascending)** in `get_all_releases`.
 /// Callers rely on this for stable output ordering without doing additional sorting.
+#[async_trait]
 pub trait ReleasesStore: Send + Sync {
-    fn get_all_releases<'a>(
-        &'a self,
-        include: &'a Include,
-    ) -> Pin<Box<dyn Future<Output = Result<Vec<Release>, PersistenceError>> + Send + 'a>>;
+    async fn get_all_releases(&self, include: &Include) -> Result<Vec<Release>, PersistenceError>;
 
     /// Returns all releases for a single module.
     ///
     /// The returned list is expected to be stable; callers may apply their own version ordering.
-    fn get_releases_by_name<'a>(
-        &'a self,
-        name: &'a str,
-        include: &'a Include,
-    ) -> Pin<Box<dyn Future<Output = Result<Vec<Release>, PersistenceError>> + Send + 'a>>;
+    async fn get_releases_by_name(
+        &self,
+        name: &str,
+        include: &Include,
+    ) -> Result<Vec<Release>, PersistenceError>;
 
-    fn replace_all_releases<'a>(
-        &'a self,
-        releases: Vec<Release>,
-    ) -> Pin<Box<dyn Future<Output = Result<(), PersistenceError>> + Send + 'a>>;
+    async fn replace_all_releases(&self, releases: Vec<Release>) -> Result<(), PersistenceError>;
 
     /// Map of module `name` → `localized_name` from the `modules` table.
-    fn load_module_localizations<'a>(
-        &'a self,
-    ) -> Pin<Box<dyn Future<Output = Result<HashMap<String, String>, PersistenceError>> + Send + 'a>>;
+    async fn load_module_localizations(&self) -> Result<HashMap<String, String>, PersistenceError>;
 }
 
+#[async_trait]
 impl ReleasesStore for SqliteReleasesStore {
-    fn get_all_releases<'a>(
-        &'a self,
-        include: &'a Include,
-    ) -> Pin<Box<dyn Future<Output = Result<Vec<Release>, PersistenceError>> + Send + 'a>> {
-        Box::pin(async move { SqliteReleasesStore::get_all_releases(self, include).await })
+    async fn get_all_releases(&self, include: &Include) -> Result<Vec<Release>, PersistenceError> {
+        SqliteReleasesStore::get_all_releases(self, include).await
     }
 
-    fn get_releases_by_name<'a>(
-        &'a self,
-        name: &'a str,
-        include: &'a Include,
-    ) -> Pin<Box<dyn Future<Output = Result<Vec<Release>, PersistenceError>> + Send + 'a>> {
-        Box::pin(async move { SqliteReleasesStore::get_releases_by_name(self, name, include).await })
+    async fn get_releases_by_name(
+        &self,
+        name: &str,
+        include: &Include,
+    ) -> Result<Vec<Release>, PersistenceError> {
+        SqliteReleasesStore::get_releases_by_name(self, name, include).await
     }
 
-    fn replace_all_releases<'a>(
-        &'a self,
-        releases: Vec<Release>,
-    ) -> Pin<Box<dyn Future<Output = Result<(), PersistenceError>> + Send + 'a>> {
-        Box::pin(async move { SqliteReleasesStore::replace_all_releases(self, releases).await })
+    async fn replace_all_releases(&self, releases: Vec<Release>) -> Result<(), PersistenceError> {
+        SqliteReleasesStore::replace_all_releases(self, releases).await
     }
 
-    fn load_module_localizations<'a>(
-        &'a self,
-    ) -> Pin<Box<dyn Future<Output = Result<HashMap<String, String>, PersistenceError>> + Send + 'a>>
-    {
-        Box::pin(async move { SqliteReleasesStore::load_module_localizations(self).await })
+    async fn load_module_localizations(&self) -> Result<HashMap<String, String>, PersistenceError> {
+        SqliteReleasesStore::load_module_localizations(self).await
     }
 }
 
-pub(crate) fn version_parts(
-    r: &Release,
-) -> (
-    ReleaseKind,
-    i32,
-    i32,
-    i32,
-    Option<i32>,
-) {
+pub(crate) fn version_parts(r: &Release) -> (ReleaseKind, i32, i32, i32, Option<i32>) {
     let kind = r.kind;
     match &r.version {
         Version::Release {
@@ -116,7 +92,13 @@ pub(crate) fn version_parts(
             minor,
             patch,
             number,
-        } => (ReleaseKind::Candidate, *major, *minor, *patch, Some(*number)),
+        } => (
+            ReleaseKind::Candidate,
+            *major,
+            *minor,
+            *patch,
+            Some(*number),
+        ),
     }
 }
 
