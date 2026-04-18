@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use sqlx::sqlite::{SqliteConnectOptions, SqlitePool, SqlitePoolOptions};
 use sqlx::Row;
 use tracing::log;
@@ -21,6 +23,9 @@ impl SqliteReleasesStore {
         sqlx::query("PRAGMA journal_mode = WAL;")
             .execute(&pool)
             .await?;
+        sqlx::query("PRAGMA foreign_keys = ON;")
+            .execute(&pool)
+            .await?;
         Ok(Self { pool })
     }
 
@@ -29,6 +34,9 @@ impl SqliteReleasesStore {
         let pool = SqlitePoolOptions::new()
             .max_connections(1)
             .connect("sqlite::memory:")
+            .await?;
+        sqlx::query("PRAGMA foreign_keys = ON;")
+            .execute(&pool)
             .await?;
         Ok(Self { pool })
     }
@@ -42,21 +50,22 @@ impl SqliteReleasesStore {
         include: &Include,
     ) -> Result<Vec<Release>, PersistenceError> {
         let mut sql = String::from(
-            r#"SELECT name, localized_name, url, date_time, version_kind, major, minor, patch, rc_number, closed
-               FROM releases"#,
+            r#"SELECT r.name, m.localized_name, r.url, r.date_time, r.version_kind, r.major, r.minor, r.patch, r.rc_number, r.closed
+               FROM releases r
+               INNER JOIN modules m ON m.name = r.name"#,
         );
         let mut filters = Vec::new();
         if !include.candidates {
-            filters.push("version_kind != 'candidate'");
+            filters.push("r.version_kind != 'candidate'");
         }
         if !include.milestones {
-            filters.push("version_kind != 'milestone'");
+            filters.push("r.version_kind != 'milestone'");
         }
         if !filters.is_empty() {
             sql.push_str(" WHERE ");
             sql.push_str(&filters.join(" AND "));
         }
-        sql.push_str(" ORDER BY name ASC");
+        sql.push_str(" ORDER BY r.name ASC");
 
         let rows = sqlx::query(&sql).fetch_all(&self.pool).await?;
 
@@ -98,17 +107,18 @@ impl SqliteReleasesStore {
         include: &Include,
     ) -> Result<Vec<Release>, PersistenceError> {
         let mut sql = String::from(
-            r#"SELECT name, localized_name, url, date_time, version_kind, major, minor, patch, rc_number, closed
-               FROM releases
-               WHERE name = ?"#,
+            r#"SELECT r.name, m.localized_name, r.url, r.date_time, r.version_kind, r.major, r.minor, r.patch, r.rc_number, r.closed
+               FROM releases r
+               INNER JOIN modules m ON m.name = r.name
+               WHERE r.name = ?"#,
         );
         if !include.candidates {
-            sql.push_str(" AND version_kind != 'candidate'");
+            sql.push_str(" AND r.version_kind != 'candidate'");
         }
         if !include.milestones {
-            sql.push_str(" AND version_kind != 'milestone'");
+            sql.push_str(" AND r.version_kind != 'milestone'");
         }
-        sql.push_str(" ORDER BY major ASC, minor ASC, patch ASC, date_time ASC");
+        sql.push_str(" ORDER BY r.major ASC, r.minor ASC, r.patch ASC, r.date_time ASC");
 
         let rows = sqlx::query(&sql).bind(name).fetch_all(&self.pool).await?;
 
@@ -145,28 +155,35 @@ impl SqliteReleasesStore {
     }
 
     pub async fn replace_all_releases(&self, releases: Vec<Release>) -> Result<(), PersistenceError> {
-        let count = releases.len();
         let mut tx = self.pool.begin().await?;
-        sqlx::query("DELETE FROM releases")
-            .execute(&mut *tx)
-            .await?;
 
+        let module_names: Vec<String> = sqlx::query_scalar("SELECT name FROM modules")
+            .fetch_all(&mut *tx)
+            .await?;
+        let known: HashSet<String> = module_names.into_iter().collect();
+
+        let mut applied = 0usize;
         for r in releases {
+            if !known.contains(&r.name) {
+                continue;
+            }
+
             let (kind, major, minor, patch, rc) = version_parts(&r);
             let kind = version_kind_db_str(kind);
             let closed = matches!(r.kind, ReleaseKind::Milestone) && r.closed;
             sqlx::query(
                 r#"INSERT INTO releases
-                   (name, localized_name, url, date_time, version_kind, major, minor, patch, rc_number, closed)
-                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                   ON CONFLICT DO UPDATE SET
-                     localized_name = excluded.localized_name,
+                   (name, url, date_time, version_kind, major, minor, patch, rc_number, closed)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                   ON CONFLICT(name, version_kind, major, minor, patch, rc_number) DO UPDATE SET
                      url = excluded.url,
                      date_time = excluded.date_time,
-                     closed = excluded.closed"#,
+                     closed = excluded.closed
+                   WHERE releases.url != excluded.url
+                      OR releases.date_time != excluded.date_time
+                      OR releases.closed != excluded.closed"#,
             )
             .bind(&r.name)
-            .bind(&r.localized_name)
             .bind(&r.url)
             .bind(&r.date_time)
             .bind(kind)
@@ -177,10 +194,11 @@ impl SqliteReleasesStore {
             .bind(closed)
             .execute(&mut *tx)
             .await?;
+            applied += 1;
         }
 
         tx.commit().await?;
-        log::info!("Updated {} releases", count);
+        log::info!("Updated {} releases", applied);
         Ok(())
     }
 }

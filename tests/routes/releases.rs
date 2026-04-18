@@ -1,3 +1,4 @@
+use std::collections::HashSet;
 use std::future::Future;
 use std::pin::Pin;
 
@@ -22,6 +23,19 @@ async fn releases_state_seeded(releases: Vec<Release>) -> ReleasesState {
         .run(store.pool())
         .await
         .expect("run migrations");
+
+    let mut seen: HashSet<&str> = HashSet::new();
+    for rel in &releases {
+        if seen.insert(rel.name.as_str()) {
+            sqlx::query("INSERT OR REPLACE INTO modules (name, localized_name) VALUES (?, ?)")
+                .bind(&rel.name)
+                .bind(&rel.localized_name)
+                .execute(store.pool())
+                .await
+                .expect("seed module for test");
+        }
+    }
+
     store
         .replace_all_releases(releases)
         .await

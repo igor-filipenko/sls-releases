@@ -82,6 +82,10 @@ async fn sync_once_mock_github_writes_sqlite() {
         .run(sqlite.pool())
         .await
         .expect("run migrations");
+    sqlx::query("INSERT INTO modules (name, localized_name) VALUES ('a', 'A'), ('b', 'B')")
+        .execute(sqlite.pool())
+        .await
+        .expect("seed test modules");
     let store: Arc<dyn ReleasesStore> = Arc::new(sqlite);
 
     sync_releases_once(&github, &converter, &store).await;
