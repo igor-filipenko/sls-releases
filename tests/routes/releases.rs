@@ -1,4 +1,4 @@
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::future::Future;
 use std::pin::Pin;
 
@@ -98,6 +98,13 @@ impl ReleasesStore for AlwaysFailingStore {
         _releases: Vec<Release>,
     ) -> Pin<Box<dyn Future<Output = Result<(), PersistenceError>> + Send + 'a>> {
         Box::pin(async move { Ok(()) })
+    }
+
+    fn load_module_localizations<'a>(
+        &'a self,
+    ) -> Pin<Box<dyn Future<Output = Result<HashMap<String, String>, PersistenceError>> + Send + 'a>>
+    {
+        Box::pin(async move { Err(PersistenceError::InvalidVersionKind("test".into())) })
     }
 }
 

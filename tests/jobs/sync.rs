@@ -4,7 +4,7 @@ use serde_json::json;
 use wiremock::matchers::{method, path, query_param};
 use wiremock::{Mock, MockServer, ResponseTemplate};
 
-use sls_releases::clients::github::client::{Converter, GitHubClient};
+use sls_releases::clients::github::client::GitHubClient;
 use sls_releases::clients::github::ReleasesClient;
 use sls_releases::domain::release::{ReleaseKind, Version};
 use sls_releases::jobs::sync::sync_releases_once;
@@ -66,11 +66,6 @@ async fn sync_once_mock_github_writes_sqlite() {
     .await;
     stub_milestones_page(&server, 1, json!([]), 200).await;
 
-    let mut known = std::collections::HashMap::new();
-    known.insert("a".to_string(), "A".to_string());
-    known.insert("b".to_string(), "B".to_string());
-    let converter = Converter::new(known);
-
     let github: Arc<dyn ReleasesClient> = Arc::new(GitHubClient::new_with_base_url(
         "test-token".to_string(),
         server.uri(),
@@ -88,7 +83,7 @@ async fn sync_once_mock_github_writes_sqlite() {
         .expect("seed test modules");
     let store: Arc<dyn ReleasesStore> = Arc::new(sqlite);
 
-    sync_releases_once(&github, &converter, &store).await;
+    sync_releases_once(&github, &store).await;
 
     let mut all = store
         .get_all_releases(&Include::all())

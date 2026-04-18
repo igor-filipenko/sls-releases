@@ -1,4 +1,4 @@
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 
 use sqlx::sqlite::{SqliteConnectOptions, SqlitePool, SqlitePoolOptions};
 use sqlx::Row;
@@ -43,6 +43,19 @@ impl SqliteReleasesStore {
 
     pub fn pool(&self) -> &SqlitePool {
         &self.pool
+    }
+
+    pub async fn load_module_localizations(
+        &self,
+    ) -> Result<HashMap<String, String>, PersistenceError> {
+        let rows = sqlx::query("SELECT name, localized_name FROM modules")
+            .fetch_all(&self.pool)
+            .await?;
+        let mut map = HashMap::with_capacity(rows.len());
+        for row in rows {
+            map.insert(row.try_get("name")?, row.try_get("localized_name")?);
+        }
+        Ok(map)
     }
 
     pub async fn get_all_releases(

@@ -6,7 +6,7 @@ use chrono::Offset;
 use clap::Parser;
 use tracing_subscriber::EnvFilter;
 
-use sls_releases::clients::github::client::{Converter, GitHubClient};
+use sls_releases::clients::github::client::GitHubClient;
 use sls_releases::clients::github::ReleasesClient;
 use sls_releases::config::{load_config, CliConfig};
 use sls_releases::jobs::sync::spawn_periodic_sync;
@@ -27,7 +27,7 @@ Without --config, the process reads GITHUB_TOKEN from the environment and uses s
 overrides github.token when set."
 )]
 struct Cli {
-    /// TOML file with [server], [github], [persistence], [refresh], and [sls] sections.
+    /// TOML file with [server], [github], [persistence], and [refresh] sections.
     #[arg(short = 'c', long = "config")]
     config: Option<std::path::PathBuf>,
     /// TCP port to listen on when `--config` is not used [default: 8080].
@@ -56,7 +56,6 @@ async fn main() -> anyhow::Result<()> {
 
     let github: Arc<dyn ReleasesClient> =
         Arc::new(GitHubClient::new(cfg.github_token.clone(), cfg.github_user_agent.clone()));
-    let converter = Arc::new(Converter::new(cfg.sls_modules));
 
     let sqlite = SqliteReleasesStore::connect(&cfg.sqlite_path)
         .await
@@ -69,7 +68,6 @@ async fn main() -> anyhow::Result<()> {
 
     spawn_periodic_sync(
         github.clone(),
-        converter.clone(),
         store.clone(),
         cfg.refresh_interval_secs,
     );

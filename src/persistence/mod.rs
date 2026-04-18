@@ -3,6 +3,7 @@ pub mod migrations;
 
 pub use sqlite::SqliteReleasesStore;
 
+use std::collections::HashMap;
 use std::future::Future;
 use std::pin::Pin;
 
@@ -56,6 +57,11 @@ pub trait ReleasesStore: Send + Sync {
         &'a self,
         releases: Vec<Release>,
     ) -> Pin<Box<dyn Future<Output = Result<(), PersistenceError>> + Send + 'a>>;
+
+    /// Map of module `name` → `localized_name` from the `modules` table.
+    fn load_module_localizations<'a>(
+        &'a self,
+    ) -> Pin<Box<dyn Future<Output = Result<HashMap<String, String>, PersistenceError>> + Send + 'a>>;
 }
 
 impl ReleasesStore for SqliteReleasesStore {
@@ -79,6 +85,13 @@ impl ReleasesStore for SqliteReleasesStore {
         releases: Vec<Release>,
     ) -> Pin<Box<dyn Future<Output = Result<(), PersistenceError>> + Send + 'a>> {
         Box::pin(async move { SqliteReleasesStore::replace_all_releases(self, releases).await })
+    }
+
+    fn load_module_localizations<'a>(
+        &'a self,
+    ) -> Pin<Box<dyn Future<Output = Result<HashMap<String, String>, PersistenceError>> + Send + 'a>>
+    {
+        Box::pin(async move { SqliteReleasesStore::load_module_localizations(self).await })
     }
 }
 

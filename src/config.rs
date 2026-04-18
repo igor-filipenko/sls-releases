@@ -1,4 +1,3 @@
-use std::collections::HashMap;
 use std::env;
 use std::path::Path;
 use std::string::ToString;
@@ -25,7 +24,6 @@ pub struct AppConfig {
     pub server_port: u16,
     pub github_token: String,
     pub github_user_agent: String,
-    pub sls_modules: HashMap<String, String>,
     pub sqlite_path: String,
     pub refresh_interval_secs: u64,
 }
@@ -42,8 +40,6 @@ struct FileConfig {
     server: RawServer,
     #[serde(default)]
     github: RawGithub,
-    #[serde(default)]
-    sls: RawSls,
     #[serde(default)]
     persistence: RawPersistence,
     #[serde(default)]
@@ -70,12 +66,6 @@ struct RawGithub {
     token: String,
     #[serde(default)]
     user_agent: String,
-}
-
-#[derive(Debug, Default, Deserialize)]
-struct RawSls {
-    #[serde(default)]
-    modules: HashMap<String, String>,
 }
 
 #[derive(Debug, Default, Deserialize)]
@@ -111,7 +101,6 @@ pub fn load_config(cli: &CliConfig) -> Result<AppConfig, ConfigError> {
             github_token: env::var(ENV_GITHUB_TOKEN)
                 .map_err(|_| ConfigError::MissingGithubToken)?,
             github_user_agent: default_user_agent(),
-            sls_modules: HashMap::new(),
             sqlite_path: get_database_path(&cli.database)?,
             refresh_interval_secs: 300,
         })
@@ -150,7 +139,6 @@ fn load_config_from_path(path: &Path) -> Result<AppConfig, ConfigError> {
         server_port: raw.server.port,
         github_token,
         github_user_agent,
-        sls_modules: raw.sls.modules,
         sqlite_path,
         refresh_interval_secs,
     })
@@ -225,7 +213,6 @@ mod tests {
             assert_eq!(cfg.server_port, DEFAULT_PORT);
             assert_eq!(cfg.github_token, "cli-test-token");
             assert_eq!(cfg.github_user_agent, default_user_agent());
-            assert!(cfg.sls_modules.is_empty());
             assert_eq!(cfg.sqlite_path, "releases.db");
             assert_eq!(cfg.refresh_interval_secs, 300);
         });
@@ -291,7 +278,6 @@ interval_secs = 60
             assert_eq!(cfg.server_port, DEFAULT_PORT, "server.port defaults");
             assert_eq!(cfg.github_token, "from-file");
             assert_eq!(cfg.github_user_agent, default_user_agent(), "empty user_agent defaults");
-            assert!(cfg.sls_modules.is_empty());
             assert_eq!(cfg.sqlite_path, db_path);
             assert_eq!(cfg.refresh_interval_secs, 60);
         });
