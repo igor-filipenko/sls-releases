@@ -8,7 +8,7 @@ use tracing_subscriber::EnvFilter;
 
 use sls_releases::clients::github::client::{Converter, GitHubClient};
 use sls_releases::clients::github::ReleasesClient;
-use sls_releases::config::load_config_from_path;
+use sls_releases::config::{load_config, CliConfig};
 use sls_releases::jobs::sync::spawn_periodic_sync;
 use sls_releases::persistence::{migrations, ReleasesStore, SqliteReleasesStore};
 use sls_releases::routes;
@@ -20,6 +20,10 @@ use sls_releases::routes::transactions::TransactionsState;
 struct Cli {
     #[arg(short = 'c', long = "config")]
     config: Option<std::path::PathBuf>,
+    #[arg(short = 'p', long = "port")]
+    port: Option<u16>,
+    #[arg(short = 'd', long = "database")]
+    database: Option<String>,
 }
 
 #[tokio::main]
@@ -31,7 +35,12 @@ async fn main() -> anyhow::Result<()> {
         .init();
 
     let cli = Cli::parse();
-    let cfg = load_config_from_path(cli.config.as_deref()).context("failed to load config")?;
+    let base_cfg = CliConfig {
+        config_path: cli.config,
+        server_port: cli.port,
+        database: cli.database,
+    };
+    let cfg = load_config(&base_cfg).context("failed to load config")?;
 
     let github: Arc<dyn ReleasesClient> =
         Arc::new(GitHubClient::new(cfg.github_token.clone(), cfg.github_user_agent.clone()));

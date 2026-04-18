@@ -24,8 +24,10 @@ This file defines working conventions for agents and humans while rewriting this
 - `src/clients/github/`: GitHub paging client + DTOs + cache.
 - `src/domain/`: release/version domain types and ordering.
 - `src/routes/`: axum handlers.
-- `src/render.rs`: CSV/HTML rendering helpers.
-- `tests/`: parity tests. Prefer unit tests over heavy integration tests.
+- `tests/`: parity tests.
+
+## Frontend
+- `web`: web application
 
 ## Dependency guidelines
 - Prefer mature, common crates: `axum`, `tokio`, `reqwest`, `serde`, `config`, `regex`, `chrono`, `tracing`.
@@ -35,4 +37,4 @@ This file defines working conventions for agents and humans while rewriting this
 - Compile continuously while editing (e.g. keep `cargo check` or `cargo watch -x check` running) so code is validated on every change.
 - Add tests when encoding behavior that is easy to regress (version ordering, tag parsing, output formatting).
 - Keep commits scoped (one behavior change per commit) once we start executing.
-
+- Don't change rust backend and web application in the same time, keep API first

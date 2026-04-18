@@ -1,8 +1,24 @@
 use std::collections::HashMap;
 use std::env;
 use std::path::Path;
-
+use std::string::ToString;
 use serde::Deserialize;
+
+///
+/// Environment variable name for GitHub token.
+/// 
+const ENV_GITHUB_TOKEN: &str = "GITHUB_TOKEN";
+
+///
+/// Default user agent for GitHub API requests.
+/// 
+const DEFAULT_USER_AGENT_TEMPLATE: &str = "sls-releases/{version}";
+
+///
+/// Default server port.
+/// 
+const DEFAULT_PORT: u16 = 8080;
+
 
 #[derive(Debug, Clone)]
 pub struct AppConfig {
@@ -14,8 +30,14 @@ pub struct AppConfig {
     pub refresh_interval_secs: u64,
 }
 
+pub struct CliConfig {
+    pub config_path: Option<std::path::PathBuf>,
+    pub server_port: Option<u16>,
+    pub database: Option<String>,
+}
+
 #[derive(Debug, Deserialize)]
-struct RawConfig {
+struct FileConfig {
     #[serde(default)]
     server: RawServer,
     #[serde(default)]
@@ -60,10 +82,6 @@ struct RawRefresh {
     interval_secs: u64,
 }
 
-const fn default_port() -> u16 {
-    8080
-}
-
 #[derive(Debug, thiserror::Error)]
 pub enum ConfigError {
     #[error("failed to load config: {0}")]
@@ -76,29 +94,37 @@ pub enum ConfigError {
     InvalidRefreshInterval,
 }
 
-pub fn load_config() -> Result<AppConfig, ConfigError> {
-    load_config_from_path(None)
+pub fn load_config(cli: &CliConfig) -> Result<AppConfig, ConfigError> {
+    if let Some(config_path) = &cli.config_path {
+        load_config_from_path(config_path.as_path())
+    } else {
+        let token = env::var(ENV_GITHUB_TOKEN)
+            .map_err(|_| ConfigError::MissingGithubToken)?;
+        Ok(AppConfig {
+            server_port: cli.server_port.unwrap_or(8080),
+            github_token: token,
+            github_user_agent: default_user_agent(),
+            sls_modules: HashMap::new(),
+            sqlite_path: "releases.db".to_string(),
+            refresh_interval_secs: 300,
+        })
+    }
 }
 
-pub fn load_config_from_path(path: Option<&Path>) -> Result<AppConfig, ConfigError> {
-    // By default reads `sls.toml` (or other supported extensions) from current directory (repo root).
-    let file = match path {
-        Some(p) => config::File::from(p).required(true),
-        None => config::File::with_name("sls").required(true),
-    };
-
+fn load_config_from_path(path: &Path) -> Result<AppConfig, ConfigError> {
+    let file = config::File::from(path).required(true);
     let c = config::Config::builder().add_source(file).build()?;
 
-    let raw: RawConfig = c.try_deserialize()?;
+    let raw: FileConfig = c.try_deserialize()?;
 
     // Highest priority: `GITHUB_TOKEN` env var.
-    let github_token = env::var("GITHUB_TOKEN").unwrap_or(raw.github.token);
+    let github_token = env::var(ENV_GITHUB_TOKEN).unwrap_or(raw.github.token);
     if github_token.trim().is_empty() {
         return Err(ConfigError::MissingGithubToken);
     }
 
     let github_user_agent = if raw.github.user_agent.trim().is_empty() {
-        format!("sls-releases/{}", env!("CARGO_PKG_VERSION"))
+        default_user_agent()
     } else {
         raw.github.user_agent
     };
@@ -121,4 +147,12 @@ pub fn load_config_from_path(path: Option<&Path>) -> Result<AppConfig, ConfigErr
         sqlite_path,
         refresh_interval_secs,
     })
+}
+
+fn default_user_agent() -> String {
+    format!("{}", DEFAULT_USER_AGENT_TEMPLATE.replace("{}", env!("CARGO_PKG_VERSION")))
+}
+
+const fn default_port() -> u16 {
+    DEFAULT_PORT
 }
