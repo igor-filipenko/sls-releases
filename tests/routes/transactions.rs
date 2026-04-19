@@ -38,7 +38,9 @@ async fn transactions_route_valid_id_returns_exact_json() {
     let id = format!("{}{}", encode_long(internal_id), encode_long(seconds));
 
     let offset = FixedOffset::east_opt(3 * 3600).unwrap();
-    let app = routes::transactions::router(TransactionsState { zone_offset: offset });
+    let app = routes::transactions::router(TransactionsState {
+        zone_offset: offset,
+    });
 
     let resp = app
         .oneshot(
@@ -68,7 +70,9 @@ async fn transactions_route_valid_id_returns_exact_json() {
 #[tokio::test]
 async fn transactions_route_invalid_id_returns_400_and_message() {
     let offset = FixedOffset::east_opt(3 * 3600).unwrap();
-    let app = routes::transactions::router(TransactionsState { zone_offset: offset });
+    let app = routes::transactions::router(TransactionsState {
+        zone_offset: offset,
+    });
 
     let bad = "not-valid";
     let resp = app
@@ -85,4 +89,3 @@ async fn transactions_route_invalid_id_returns_400_and_message() {
     let body = body_string(resp).await;
     assert_eq!(body, format!("Invalid transaction ID: '{bad}'"));
 }
-

@@ -4,11 +4,11 @@ use serde_json::json;
 use wiremock::matchers::{method, path, query_param};
 use wiremock::{Mock, MockServer, ResponseTemplate};
 
-use sls_releases::clients::github::client::GitHubClient;
 use sls_releases::clients::github::ReleasesClient;
+use sls_releases::clients::github::client::GitHubClient;
 use sls_releases::domain::release::{ReleaseKind, Version};
 use sls_releases::jobs::sync::sync_releases_once;
-use sls_releases::persistence::{migrations, Include, ReleasesStore, SqliteReleasesStore};
+use sls_releases::persistence::{Include, ReleasesStore, SqliteReleasesStore, migrations};
 
 async fn stub_releases_page(server: &MockServer, page: i32, body: serde_json::Value, status: u16) {
     let template = ResponseTemplate::new(status)
@@ -24,7 +24,12 @@ async fn stub_releases_page(server: &MockServer, page: i32, body: serde_json::Va
         .await;
 }
 
-async fn stub_milestones_page(server: &MockServer, page: i32, body: serde_json::Value, status: u16) {
+async fn stub_milestones_page(
+    server: &MockServer,
+    page: i32,
+    body: serde_json::Value,
+    status: u16,
+) {
     let template = ResponseTemplate::new(status)
         .insert_header("content-type", "application/json")
         .set_body_json(body);
@@ -72,7 +77,9 @@ async fn sync_once_mock_github_writes_sqlite() {
         "test-agent".to_string(),
     ));
 
-    let sqlite = SqliteReleasesStore::in_memory().await.expect("in-memory sqlite");
+    let sqlite = SqliteReleasesStore::in_memory()
+        .await
+        .expect("in-memory sqlite");
     migrations::MIGRATOR
         .run(sqlite.pool())
         .await
@@ -93,7 +100,10 @@ async fn sync_once_mock_github_writes_sqlite() {
 
     assert_eq!(all.len(), 4);
 
-    let a_prod = all.iter().find(|r| r.url == "https://example/a100").unwrap();
+    let a_prod = all
+        .iter()
+        .find(|r| r.url == "https://example/a100")
+        .unwrap();
     assert_eq!(a_prod.name, "a");
     assert_eq!(a_prod.localized_name, "A");
     assert_eq!(a_prod.kind, ReleaseKind::Production);
@@ -108,7 +118,10 @@ async fn sync_once_mock_github_writes_sqlite() {
     assert!(!a_prod.date_time.is_empty());
     assert!(!a_prod.closed);
 
-    let a_ms = all.iter().find(|r| r.url == "https://example/m/a120").unwrap();
+    let a_ms = all
+        .iter()
+        .find(|r| r.url == "https://example/m/a120")
+        .unwrap();
     assert_eq!(a_ms.name, "a");
     assert_eq!(a_ms.localized_name, "A");
     assert_eq!(a_ms.kind, ReleaseKind::Milestone);
@@ -123,7 +136,10 @@ async fn sync_once_mock_github_writes_sqlite() {
     assert!(!a_ms.date_time.is_empty());
     assert!(!a_ms.closed);
 
-    let b_prod = all.iter().find(|r| r.url == "https://example/b213").unwrap();
+    let b_prod = all
+        .iter()
+        .find(|r| r.url == "https://example/b213")
+        .unwrap();
     assert_eq!(b_prod.name, "b");
     assert_eq!(b_prod.localized_name, "B");
     assert_eq!(b_prod.kind, ReleaseKind::Production);
@@ -138,7 +154,10 @@ async fn sync_once_mock_github_writes_sqlite() {
     assert!(!b_prod.date_time.is_empty());
     assert!(!b_prod.closed);
 
-    let b_ms = all.iter().find(|r| r.url == "https://example/m/b999").unwrap();
+    let b_ms = all
+        .iter()
+        .find(|r| r.url == "https://example/m/b999")
+        .unwrap();
     assert_eq!(b_ms.name, "b");
     assert_eq!(b_ms.localized_name, "B");
     assert_eq!(b_ms.kind, ReleaseKind::Milestone);

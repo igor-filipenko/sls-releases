@@ -19,7 +19,11 @@ impl GitHubClient {
         Self::new_with_base_url(token, "https://api.github.com", user_agent)
     }
 
-    pub fn new_with_base_url(token: String, base_url: impl Into<String>, user_agent: String) -> Self {
+    pub fn new_with_base_url(
+        token: String,
+        base_url: impl Into<String>,
+        user_agent: String,
+    ) -> Self {
         let base_url = base_url.into();
         let base_url = base_url.trim_end_matches('/').to_string();
         Self {
@@ -69,7 +73,10 @@ impl GitHubClient {
     }
 
     async fn get_releases_page(&self, page: i32) -> Result<Vec<GitHubRelease>, GitHubError> {
-        let url = format!("{}/repos/crystalservice/SET10-Loyalty/releases?per_page=100&page={page}", self.base_url);
+        let url = format!(
+            "{}/repos/crystalservice/SET10-Loyalty/releases?per_page=100&page={page}",
+            self.base_url
+        );
         let mut headers = HeaderMap::new();
         headers.insert(ACCEPT, "application/vnd.github+json".parse().unwrap());
         headers.insert(
@@ -82,7 +89,11 @@ impl GitHubClient {
         let status = resp.status();
         if status.as_u16() != 200 {
             let body = resp.text().await.unwrap_or_default();
-            tracing::debug!("unexpected status from GitHub API: {}, body: {}", status.as_u16(), body);
+            tracing::debug!(
+                "unexpected status from GitHub API: {}, body: {}",
+                status.as_u16(),
+                body
+            );
             return Err(GitHubError::UnexpectedStatus(status.as_u16()));
         }
 
@@ -117,7 +128,11 @@ impl GitHubClient {
         }
 
         let list: Vec<GitHubMilestone> = resp.json().await?;
-        tracing::debug!("got {} milestone items from GitHub page {}", list.len(), page);
+        tracing::debug!(
+            "got {} milestone items from GitHub page {}",
+            list.len(),
+            page
+        );
         Ok(list)
     }
 }

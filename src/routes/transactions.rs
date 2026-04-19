@@ -3,18 +3,12 @@ use axum::http::StatusCode;
 use axum::response::IntoResponse;
 use axum::routing::get;
 use axum::{Json, Router};
-use chrono::{DateTime, FixedOffset, Utc};
-use serde::Serialize;
+use chrono::{DateTime, FixedOffset, Utc};use serde::Serialize;
+use crate::routes::dto::transactions::Transaction;
 
 #[derive(Clone)]
 pub struct TransactionsState {
     pub zone_offset: FixedOffset,
-}
-
-#[derive(Debug, Serialize)]
-struct Transaction {
-    id: i64,
-    created: chrono::NaiveDateTime,
 }
 
 pub fn router(state: TransactionsState) -> Router {

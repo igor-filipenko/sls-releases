@@ -1,25 +1,23 @@
 use std::collections::BTreeMap;
 use std::sync::Arc;
 
-use axum::Router;
 use axum::extract::{Path, Query, State};
 use axum::http::{HeaderMap, StatusCode, Uri};
 use axum::response::Json;
 use axum::response::{IntoResponse, Response};
 use axum::routing::get;
+use axum::Router;
 
 use crate::domain::release::{ModuleRelease, Release};
 use crate::persistence::{Include, ReleasesStore};
+use crate::routes::dto::releases::{
+    ModuleReleaseRow, ReleaseRow, ReleasesQuery,
+};
 use crate::routes::render;
 
 #[derive(Clone)]
 pub struct ReleasesState {
     pub store: Arc<dyn ReleasesStore>,
-}
-
-#[derive(Debug, serde::Deserialize)]
-pub struct ReleasesQuery {
-    pub rc: Option<String>,
 }
 
 pub fn router(state: ReleasesState) -> Router {
@@ -68,7 +66,8 @@ async fn list_latest(
         )
             .into_response())
     } else if accepts_json(&headers) {
-        Ok(Json(latest).into_response())
+        let body: Vec<ReleaseRow> = latest.iter().map(ReleaseRow::from).collect();
+        Ok(Json(body).into_response())
     } else {
         Ok((
             StatusCode::OK,
@@ -114,14 +113,14 @@ async fn list_module(
         )
             .into_response())
     } else if accepts_json(&headers) {
-        Ok(Json(list).into_response())
+        let body: Vec<ModuleReleaseRow> = list.iter().map(ModuleReleaseRow::from).collect();
+        Ok(Json(body).into_response())
     } else {
         Ok((
             StatusCode::OK,
             [("content-type", "text/plain; charset=utf-8")],
             render::module_releases_csv(&list),
-        )
-            .into_response())
+        ).into_response())
     }
 }
 

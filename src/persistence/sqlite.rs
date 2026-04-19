@@ -1,10 +1,12 @@
 use std::collections::{HashMap, HashSet};
 
-use sqlx::sqlite::{SqliteConnectOptions, SqlitePool, SqlitePoolOptions};
-use sqlx::Row;
-use tracing::log;
 use crate::domain::release::{Release, ReleaseKind};
-use crate::persistence::{Include, PersistenceError, version_from_row, version_kind_db_str, version_parts};
+use crate::persistence::{
+    Include, PersistenceError, version_from_row, version_kind_db_str, version_parts,
+};
+use sqlx::Row;
+use sqlx::sqlite::{SqliteConnectOptions, SqlitePool, SqlitePoolOptions};
+use tracing::log;
 
 #[derive(Clone)]
 pub struct SqliteReleasesStore {
@@ -167,7 +169,10 @@ impl SqliteReleasesStore {
         Ok(out)
     }
 
-    pub async fn replace_all_releases(&self, releases: Vec<Release>) -> Result<(), PersistenceError> {
+    pub async fn replace_all_releases(
+        &self,
+        releases: Vec<Release>,
+    ) -> Result<(), PersistenceError> {
         let mut tx = self.pool.begin().await?;
 
         let module_names: Vec<String> = sqlx::query_scalar("SELECT name FROM modules")

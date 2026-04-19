@@ -1,23 +1,22 @@
+use serde::Deserialize;
 use std::env;
 use std::path::Path;
 use std::string::ToString;
-use serde::Deserialize;
 
 ///
 /// Environment variable name for GitHub token.
-/// 
+///
 const ENV_GITHUB_TOKEN: &str = "GITHUB_TOKEN";
 
 ///
 /// Default user agent for GitHub API requests.
-/// 
+///
 const DEFAULT_USER_AGENT_TEMPLATE: &str = "sls-releases/{version}";
 
 ///
 /// Default server port.
-/// 
+///
 const DEFAULT_PORT: u16 = 8080;
-
 
 #[derive(Debug, Clone)]
 pub struct AppConfig {
@@ -160,7 +159,10 @@ fn validate_sqlite_path(path: &str) -> Result<String, ConfigError> {
 }
 
 fn default_user_agent() -> String {
-    format!("{}", DEFAULT_USER_AGENT_TEMPLATE.replace("{}", env!("CARGO_PKG_VERSION")))
+    format!(
+        "{}",
+        DEFAULT_USER_AGENT_TEMPLATE.replace("{}", env!("CARGO_PKG_VERSION"))
+    )
 }
 
 const fn default_port() -> u16 {
@@ -277,10 +279,13 @@ interval_secs = 60
             let cfg = load_config(&cli).expect("load_config");
             assert_eq!(cfg.server_port, DEFAULT_PORT, "server.port defaults");
             assert_eq!(cfg.github_token, "from-file");
-            assert_eq!(cfg.github_user_agent, default_user_agent(), "empty user_agent defaults");
+            assert_eq!(
+                cfg.github_user_agent,
+                default_user_agent(),
+                "empty user_agent defaults"
+            );
             assert_eq!(cfg.sqlite_path, db_path);
             assert_eq!(cfg.refresh_interval_secs, 60);
         });
     }
-
 }

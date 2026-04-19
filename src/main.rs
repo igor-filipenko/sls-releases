@@ -6,11 +6,11 @@ use chrono::Offset;
 use clap::Parser;
 use tracing_subscriber::EnvFilter;
 
-use sls_releases::clients::github::client::GitHubClient;
 use sls_releases::clients::github::ReleasesClient;
-use sls_releases::config::{load_config, CliConfig};
+use sls_releases::clients::github::client::GitHubClient;
+use sls_releases::config::{CliConfig, load_config};
 use sls_releases::jobs::sync::spawn_periodic_sync;
-use sls_releases::persistence::{migrations, ReleasesStore, SqliteReleasesStore};
+use sls_releases::persistence::{ReleasesStore, SqliteReleasesStore, migrations};
 use sls_releases::routes;
 use sls_releases::routes::releases::ReleasesState;
 use sls_releases::routes::transactions::TransactionsState;
@@ -54,8 +54,10 @@ async fn main() -> anyhow::Result<()> {
     };
     let cfg = load_config(&base_cfg).context("failed to load config")?;
 
-    let github: Arc<dyn ReleasesClient> =
-        Arc::new(GitHubClient::new(cfg.github_token.clone(), cfg.github_user_agent.clone()));
+    let github: Arc<dyn ReleasesClient> = Arc::new(GitHubClient::new(
+        cfg.github_token.clone(),
+        cfg.github_user_agent.clone(),
+    ));
 
     let sqlite = SqliteReleasesStore::connect(&cfg.sqlite_path)
         .await
@@ -66,11 +68,7 @@ async fn main() -> anyhow::Result<()> {
         .context("failed to run SQLite migrations")?;
     let store: Arc<dyn ReleasesStore> = Arc::new(sqlite);
 
-    spawn_periodic_sync(
-        github.clone(),
-        store.clone(),
-        cfg.refresh_interval_secs,
-    );
+    spawn_periodic_sync(github.clone(), store.clone(), cfg.refresh_interval_secs);
 
     let app = Router::new()
         .merge(routes::releases::router(ReleasesState {
@@ -86,8 +84,6 @@ async fn main() -> anyhow::Result<()> {
     let listener = tokio::net::TcpListener::bind(addr)
         .await
         .with_context(|| format!("bind failed ({addr})"))?;
-    axum::serve(listener, app)
-        .await
-        .context("server failed")?;
+    axum::serve(listener, app).await.context("server failed")?;
     Ok(())
 }
