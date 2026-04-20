@@ -27,6 +27,7 @@ export function ModulePage() {
   const moduleName = rawName ? decodeURIComponent(rawName) : "";
 
   const [includeRc, setIncludeRc] = useState(false);
+  const [includeMilestones, setIncludeMilestones] = useState(false);
   const [rows, setRows] = useState<ModuleReleaseRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -36,14 +37,14 @@ export function ModulePage() {
     setLoading(true);
     setError(null);
     try {
-      setRows(await fetchModuleReleases(moduleName, includeRc));
+      setRows(await fetchModuleReleases(moduleName, includeRc, includeMilestones));
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to load history");
       setRows([]);
     } finally {
       setLoading(false);
     }
-  }, [moduleName, includeRc]);
+  }, [moduleName, includeRc, includeMilestones]);
 
   useEffect(() => {
     void load();
@@ -72,18 +73,33 @@ export function ModulePage() {
             Release history for this module (newest first).
           </p>
         </div>
-        <div className="flex items-center gap-3 rounded-lg border bg-card px-4 py-2 shadow-sm">
-          <label
-            htmlFor="rc-toggle-module"
-            className="text-sm font-medium leading-none"
-          >
-            Include release candidates
-          </label>
-          <Switch
-            id="rc-toggle-module"
-            checked={includeRc}
-            onCheckedChange={setIncludeRc}
-          />
+        <div className="flex flex-col gap-2 rounded-lg border bg-card px-4 py-2 shadow-sm">
+          <div className="flex items-center justify-between gap-3">
+            <label
+              htmlFor="rc-toggle-module"
+              className="text-sm font-medium leading-none"
+            >
+              Include release candidates
+            </label>
+            <Switch
+              id="rc-toggle-module"
+              checked={includeRc}
+              onCheckedChange={setIncludeRc}
+            />
+          </div>
+          <div className="flex items-center justify-between gap-3">
+            <label
+              htmlFor="ms-toggle-module"
+              className="text-sm font-medium leading-none"
+            >
+              Include milestones
+            </label>
+            <Switch
+              id="ms-toggle-module"
+              checked={includeMilestones}
+              onCheckedChange={setIncludeMilestones}
+            />
+          </div>
         </div>
       </div>
 

@@ -33,6 +33,7 @@ function isMilestoneVersion(version: string): boolean {
 
 export function ReleasesPage() {
   const [includeRc, setIncludeRc] = useState(false);
+  const [includeMilestones, setIncludeMilestones] = useState(false);
   const [rows, setRows] = useState<ReleaseRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -41,14 +42,14 @@ export function ReleasesPage() {
     setLoading(true);
     setError(null);
     try {
-      setRows(await fetchReleases(includeRc));
+      setRows(await fetchReleases(includeRc, includeMilestones));
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to load releases");
       setRows([]);
     } finally {
       setLoading(false);
     }
-  }, [includeRc]);
+  }, [includeRc, includeMilestones]);
 
   useEffect(() => {
     void load();
@@ -65,18 +66,33 @@ export function ReleasesPage() {
             Latest module versions from GitHub.
           </p>
         </div>
-        <div className="flex items-center gap-3 rounded-lg border bg-card px-4 py-2 shadow-sm">
-          <label
-            htmlFor="rc-toggle"
-            className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-          >
-            Include release candidates
-          </label>
-          <Switch
-            id="rc-toggle"
-            checked={includeRc}
-            onCheckedChange={setIncludeRc}
-          />
+        <div className="flex flex-col gap-2 rounded-lg border bg-card px-4 py-2 shadow-sm">
+          <div className="flex items-center justify-between gap-3">
+            <label
+              htmlFor="rc-toggle"
+              className="text-sm font-medium leading-none"
+            >
+              Include release candidates
+            </label>
+            <Switch
+              id="rc-toggle"
+              checked={includeRc}
+              onCheckedChange={setIncludeRc}
+            />
+          </div>
+          <div className="flex items-center justify-between gap-3">
+            <label
+              htmlFor="ms-toggle"
+              className="text-sm font-medium leading-none"
+            >
+              Include milestones
+            </label>
+            <Switch
+              id="ms-toggle"
+              checked={includeMilestones}
+              onCheckedChange={setIncludeMilestones}
+            />
+          </div>
         </div>
       </div>
 
@@ -143,11 +159,12 @@ export function ReleasesPage() {
                         {isRcVersion(r.kind) ? (
                           <Badge className="bg-yellow-400 text-black">RC</Badge>
                         ) : isMilestoneVersion(r.kind) ? (
-                          <Badge className="bg-red-500 text-white">Milestone</Badge>
+                          <Badge className="bg-red-500 text-white">
+                            Milestone
+                          </Badge>
                         ) : (
                           <Badge className="bg-green-500 text-white">Production</Badge>
                         )}
-                   
                       </div>
                     </TableCell>
                     <TableCell className="text-right">

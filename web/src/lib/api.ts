@@ -33,6 +33,7 @@ export type ModuleReleaseRow = {
 type ReleaseJson = {
   name: string;
   localized_name: string;
+  kind: string;
   version: VersionJson;
   url: string;
   date_time: string;
@@ -44,18 +45,28 @@ type ModuleReleaseJson = {
   date_time: string;
 };
 
-export function buildReleasesPath(includeRc: boolean): string {
-  const q = includeRc ? "?rc=true" : "";
-  return `/sls/releases${q}`;
+export function buildReleasesPath(
+  includeRc: boolean,
+  includeMilestones: boolean
+): string {
+  const params = new URLSearchParams();
+  if (includeRc) params.set("rc", "true");
+  if (includeMilestones) params.set("ms", "true");
+  const q = params.toString();
+  return q ? `/sls/releases?${q}` : "/sls/releases";
 }
 
 export function buildModuleReleasesPath(
   moduleName: string,
-  includeRc: boolean
+  includeRc: boolean,
+  includeMilestones: boolean
 ): string {
   const enc = encodeURIComponent(moduleName);
-  const q = includeRc ? "?rc=true" : "";
-  return `/sls/releases/${enc}${q}`;
+  const params = new URLSearchParams();
+  if (includeRc) params.set("rc", "true");
+  if (includeMilestones) params.set("ms", "true");
+  const q = params.toString();
+  return q ? `/sls/releases/${enc}?${q}` : `/sls/releases/${enc}`;
 }
 
 export async function fetchText(path: string): Promise<string> {
@@ -82,8 +93,13 @@ export async function fetchJson<T>(path: string): Promise<T> {
   return res.json() as Promise<T>;
 }
 
-export async function fetchReleases(includeRc: boolean): Promise<ReleaseRow[]> {
-  const data = await fetchJson<ReleaseJson[]>(buildReleasesPath(includeRc));
+export async function fetchReleases(
+  includeRc: boolean,
+  includeMilestones: boolean
+): Promise<ReleaseRow[]> {
+  const data = await fetchJson<ReleaseJson[]>(
+    buildReleasesPath(includeRc, includeMilestones)
+  );
   return data.map((r) => ({
     name: r.name,
     localizedName: r.localized_name,
@@ -95,10 +111,11 @@ export async function fetchReleases(includeRc: boolean): Promise<ReleaseRow[]> {
 
 export async function fetchModuleReleases(
   moduleName: string,
-  includeRc: boolean
+  includeRc: boolean,
+  includeMilestones: boolean
 ): Promise<ModuleReleaseRow[]> {
   const data = await fetchJson<ModuleReleaseJson[]>(
-    buildModuleReleasesPath(moduleName, includeRc)
+    buildModuleReleasesPath(moduleName, includeRc, includeMilestones)
   );
   return data.map((r) => ({
     version: versionToString(r.version),
