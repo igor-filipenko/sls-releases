@@ -1,9 +1,14 @@
 use crate::domain::release::{ModuleRelease, Release};
 
-pub fn releases_table_html(base_url: &str, use_candidate: bool, releases: &[Release]) -> String {
+pub fn releases_table_html(
+    base_url: &str,
+    use_candidate: bool,
+    use_milestones: bool,
+    releases: &[Release],
+) -> String {
     let rows = releases
         .iter()
-        .map(|r| r.as_html_row(base_url, use_candidate))
+        .map(|r| r.as_html_row(base_url, use_candidate, use_milestones))
         .collect::<Vec<_>>()
         .join("\n");
     format!("<table rules=\"all\">{rows}</table>")

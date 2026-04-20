@@ -559,6 +559,50 @@ async fn releases_list_csv_rc_true_includes_milestones() {
 
     assert_eq!(resp.status(), StatusCode::OK);
     let body = body_string(resp).await;
+    assert_eq!(csv_non_empty_line_count(&body), 1);
+    assert!(!body.contains("ms900"));
+    assert!(body.contains("s100"));
+}
+
+#[tokio::test]
+async fn releases_list_csv_ms_true_includes_milestones() {
+    let releases = vec![
+        ms(
+            "edge",
+            "Edge",
+            Version::Release {
+                major: 9,
+                minor: 0,
+                patch: 0,
+            },
+            "https://example/ms900",
+        ),
+        r(
+            "stable",
+            "Stable",
+            Version::Release {
+                major: 1,
+                minor: 0,
+                patch: 0,
+            },
+            "https://example/s100",
+        ),
+    ];
+
+    let app = routes::releases::router(releases_state_seeded(releases).await);
+
+    let resp = app
+        .oneshot(
+            Request::builder()
+                .uri("/sls/releases?ms=true")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(resp.status(), StatusCode::OK);
+    let body = body_string(resp).await;
     assert_eq!(csv_non_empty_line_count(&body), 2);
     assert!(body.contains("ms900"));
     assert!(body.contains("s100"));
@@ -639,6 +683,50 @@ async fn releases_module_csv_rc_true_includes_milestones_ordered_desc() {
         .oneshot(
             Request::builder()
                 .uri("/sls/releases/m?rc=true")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(resp.status(), StatusCode::OK);
+    let body = body_string(resp).await;
+    assert_eq!(csv_non_empty_line_count(&body), 1);
+    assert!(body.contains("m100"));
+    assert!(!body.contains("m200ms"));
+}
+
+#[tokio::test]
+async fn releases_module_csv_ms_true_includes_milestones_ordered_desc() {
+    let releases = vec![
+        r(
+            "m",
+            "M",
+            Version::Release {
+                major: 1,
+                minor: 0,
+                patch: 0,
+            },
+            "https://example/m100",
+        ),
+        ms(
+            "m",
+            "M",
+            Version::Release {
+                major: 2,
+                minor: 0,
+                patch: 0,
+            },
+            "https://example/m200ms",
+        ),
+    ];
+
+    let app = routes::releases::router(releases_state_seeded(releases).await);
+
+    let resp = app
+        .oneshot(
+            Request::builder()
+                .uri("/sls/releases/m?ms=true")
                 .body(Body::empty())
                 .unwrap(),
         )

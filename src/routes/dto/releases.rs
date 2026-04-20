@@ -7,6 +7,7 @@ use crate::domain::release::{ModuleRelease, Release, ReleaseKind, Version};
 #[derive(Debug, serde::Deserialize)]
 pub struct ReleasesQuery {
     pub rc: Option<String>,
+    pub ms: Option<String>,
 }
 
 #[derive(Debug, Serialize)]

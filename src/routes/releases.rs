@@ -34,8 +34,9 @@ async fn list_latest(
     Query(q): Query<ReleasesQuery>,
 ) -> Result<Response, StatusCode> {
     let use_rc = to_boolean(q.rc.as_deref());
+    let use_ms = to_boolean(q.ms.as_deref());
 
-    let include = releases_query_include(use_rc);
+    let include = releases_query_include(use_rc, use_ms);
 
     let all = state
         .store
@@ -62,7 +63,7 @@ async fn list_latest(
         Ok((
             StatusCode::OK,
             [("content-type", "text/html; charset=utf-8")],
-            render::releases_table_html(&base_url, use_rc, &latest),
+            render::releases_table_html(&base_url, use_rc, use_ms, &latest),
         )
             .into_response())
     } else if accepts_json(&headers) {
@@ -85,8 +86,9 @@ async fn list_module(
     Query(q): Query<ReleasesQuery>,
 ) -> Result<Response, StatusCode> {
     let use_rc = to_boolean(q.rc.as_deref());
+    let use_ms = to_boolean(q.ms.as_deref());
 
-    let include = releases_query_include(use_rc);
+    let include = releases_query_include(use_rc, use_ms);
 
     let all = state
         .store
@@ -144,9 +146,9 @@ fn to_boolean(s: Option<&str>) -> bool {
     matches!(s, Some(v) if v.eq_ignore_ascii_case("true"))
 }
 
-fn releases_query_include(use_rc: bool) -> Include {
+fn releases_query_include(use_rc: bool, use_ms: bool) -> Include {
     Include {
         candidates: use_rc,
-        milestones: use_rc,
+        milestones: use_ms,
     }
 }

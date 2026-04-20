@@ -108,9 +108,9 @@ impl Release {
         )
     }
 
-    pub fn as_html_row(&self, base_url: &str, use_candidate: bool) -> String {
+    pub fn as_html_row(&self, base_url: &str, use_candidate: bool, use_milestones: bool) -> String {
         format!(
-            "<tr>\n  <td><a href='{base_url}/{name}?rc={use_candidate}'>{name}</a></td>\n  <td>{localized}</td>\n  <td><a href='{url}'>{version}</a></td>\n</tr>",
+            "<tr>\n  <td><a href='{base_url}/{name}?rc={use_candidate}&ms={use_milestones}'>{name}</a></td>\n  <td>{localized}</td>\n  <td><a href='{url}'>{version}</a></td>\n</tr>",
             name = self.name,
             localized = self.localized_name,
             url = self.url,
