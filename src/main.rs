@@ -76,7 +76,8 @@ async fn main() -> anyhow::Result<()> {
         }))
         .merge(routes::transactions::router(TransactionsState {
             zone_offset: chrono::Local::now().offset().fix(),
-        }));
+        }))
+        .fallback(routes::web::fallback);
 
     let addr = std::net::SocketAddr::from(([0, 0, 0, 0], cfg.server_port));
     tracing::info!(%addr, "listening");
