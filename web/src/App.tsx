@@ -1,9 +1,28 @@
 import { BrowserRouter, Link, Navigate, Route, Routes } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { Moon, Sun } from "lucide-react";
 
 import { ReleasesPage } from "@/pages/ReleasesPage";
 import { ModulePage } from "@/pages/ModulePage";
+import { Switch } from "@/components/ui/switch";
 
 export default function App() {
+  const [isDark, setIsDark] = useState(false);
+
+  useEffect(() => {
+    const stored = localStorage.getItem("theme");
+    const prefersDark = window.matchMedia?.("(prefers-color-scheme: dark)").matches ?? false;
+    const shouldBeDark = stored === "dark" || (stored == null && prefersDark);
+
+    document.documentElement.classList.toggle("dark", shouldBeDark);
+    setIsDark(shouldBeDark);
+  }, []);
+
+  useEffect(() => {
+    document.documentElement.classList.toggle("dark", isDark);
+    localStorage.setItem("theme", isDark ? "dark" : "light");
+  }, [isDark]);
+
   return (
     <BrowserRouter>
       <div className="min-h-svh bg-background">
@@ -12,9 +31,15 @@ export default function App() {
             <Link to="/" className="text-lg font-semibold tracking-tight">
               SL Releases
             </Link>
-            <span className="text-xs text-muted-foreground">
-              Bun · Vite · React · shadcn/ui
-            </span>
+            <div className="flex items-center gap-2">
+              <Sun className="size-4 text-muted-foreground" aria-hidden="true" />
+              <Switch
+                checked={isDark}
+                onCheckedChange={setIsDark}
+                aria-label="Toggle dark mode"
+              />
+              <Moon className="size-4 text-muted-foreground" aria-hidden="true" />
+            </div>
           </div>
         </header>
         <main className="mx-auto max-w-6xl px-4 py-8">
