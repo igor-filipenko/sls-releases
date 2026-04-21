@@ -1,4 +1,3 @@
-const acceptPlain = { Accept: "text/plain" };
 const acceptJson = { Accept: "application/json" };
 
 type VersionJson =
@@ -67,18 +66,6 @@ export function buildModuleReleasesPath(
   if (includeMilestones) params.set("ms", "true");
   const q = params.toString();
   return q ? `/sls/releases/${enc}?${q}` : `/sls/releases/${enc}`;
-}
-
-export async function fetchText(path: string): Promise<string> {
-  const res = await fetch(path, { headers: acceptPlain });
-  if (!res.ok) {
-    throw new Error(
-      res.status === 502
-        ? "Upstream service unavailable (check GitHub token and backend logs)."
-        : `Request failed (${res.status})`
-    );
-  }
-  return res.text();
 }
 
 export async function fetchJson<T>(path: string): Promise<T> {
