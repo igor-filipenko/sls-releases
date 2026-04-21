@@ -7,16 +7,11 @@ import { ModulePage } from "@/pages/ModulePage";
 import { Switch } from "@/components/ui/switch";
 
 export default function App() {
-  const [isDark, setIsDark] = useState(false);
-
-  useEffect(() => {
+  const [isDark, setIsDark] = useState(() => {
     const stored = localStorage.getItem("theme");
     const prefersDark = window.matchMedia?.("(prefers-color-scheme: dark)").matches ?? false;
-    const shouldBeDark = stored === "dark" || (stored == null && prefersDark);
-
-    document.documentElement.classList.toggle("dark", shouldBeDark);
-    setIsDark(shouldBeDark);
-  }, []);
+    return stored === "dark" || (stored == null && prefersDark);
+  });
 
   useEffect(() => {
     document.documentElement.classList.toggle("dark", isDark);
