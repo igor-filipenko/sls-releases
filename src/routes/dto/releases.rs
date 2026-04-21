@@ -17,8 +17,7 @@ pub struct ReleaseRow {
     pub kind: ReleaseKind,
     pub version: Version,
     pub url: String,
-    pub date_time: String,
-    pub closed: bool,
+    pub date_time: String
 }
 
 impl From<&Release> for ReleaseRow {
@@ -29,8 +28,7 @@ impl From<&Release> for ReleaseRow {
             kind: value.kind,
             version: value.version.clone(),
             url: value.url.clone(),
-            date_time: value.date_time.clone(),
-            closed: value.closed,
+            date_time: value.date_time.clone()
         }
     }
 }

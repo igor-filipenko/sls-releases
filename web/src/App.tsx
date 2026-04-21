@@ -10,7 +10,7 @@ export default function App() {
         <header className="border-b bg-card/50 backdrop-blur-sm">
           <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4">
             <Link to="/" className="text-lg font-semibold tracking-tight">
-              SLS Releases
+              SL Releases
             </Link>
             <span className="text-xs text-muted-foreground">
               Bun · Vite · React · shadcn/ui
