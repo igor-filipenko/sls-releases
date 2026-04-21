@@ -180,7 +180,8 @@ impl SqliteReleasesStore {
             .await?;
         let known: HashSet<String> = module_names.into_iter().collect();
 
-        let mut applied = 0usize;
+        let mut processed = 0usize;
+        let mut changed = 0usize;
         for r in releases {
             if !known.contains(&r.name) {
                 continue;
@@ -189,7 +190,7 @@ impl SqliteReleasesStore {
             let (kind, major, minor, patch, rc) = version_parts(&r);
             let kind = version_kind_db_str(kind);
             let closed = matches!(r.kind, ReleaseKind::Milestone) && r.closed;
-            sqlx::query(
+            let result = sqlx::query(
                 r#"INSERT INTO releases
                    (name, url, date_time, version_kind, major, minor, patch, rc_number, closed)
                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -212,11 +213,14 @@ impl SqliteReleasesStore {
             .bind(closed)
             .execute(&mut *tx)
             .await?;
-            applied += 1;
+            processed += 1;
+            if result.rows_affected() > 0 {
+                changed += 1;
+            }
         }
 
         tx.commit().await?;
-        log::info!("Updated {} releases", applied);
+        log::info!("Processed {} releases, changed {} releases", processed, changed);
         Ok(())
     }
 }

@@ -18,6 +18,11 @@ const DEFAULT_USER_AGENT_TEMPLATE: &str = "sls-releases/{version}";
 ///
 const DEFAULT_PORT: u16 = 8080;
 
+///
+/// Default refresh interval in seconds.
+///
+const DEFAULT_REFRESH_INTERVAL_SECS: u64 = 3600;
+
 #[derive(Debug, Clone)]
 pub struct AppConfig {
     pub server_port: u16,
@@ -101,7 +106,7 @@ pub fn load_config(cli: &CliConfig) -> Result<AppConfig, ConfigError> {
                 .map_err(|_| ConfigError::MissingGithubToken)?,
             github_user_agent: default_user_agent(),
             sqlite_path: get_database_path(&cli.database)?,
-            refresh_interval_secs: 300,
+            refresh_interval_secs: DEFAULT_REFRESH_INTERVAL_SECS,
         })
     }
 }
@@ -216,7 +221,7 @@ mod tests {
             assert_eq!(cfg.github_token, "cli-test-token");
             assert_eq!(cfg.github_user_agent, default_user_agent());
             assert_eq!(cfg.sqlite_path, "releases.db");
-            assert_eq!(cfg.refresh_interval_secs, 300);
+            assert_eq!(cfg.refresh_interval_secs, 3600);
         });
     }
 

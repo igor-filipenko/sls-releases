@@ -1,4 +1,4 @@
-import { ArrowLeft, Badge, ExternalLink, ListFilter, Package } from "lucide-react";
+import { ArrowLeft, ExternalLink, ListFilter, Package } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 
