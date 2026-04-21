@@ -1,4 +1,4 @@
-import { ArrowLeft, ExternalLink, ListFilter } from "lucide-react";
+import { ArrowLeft, Badge, ExternalLink, ListFilter, Package } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 
@@ -142,10 +142,15 @@ export function ModulePage() {
 
       <Card className="overflow-hidden border shadow-sm">
         <CardHeader className="border-b bg-muted/30">
-          <CardTitle>Versions</CardTitle>
-          <CardDescription>
-            Timestamps use the server&apos;s local timezone formatting.
-          </CardDescription>
+        <div className="flex items-center gap-2">
+          <Package className="size-5 text-muted-foreground" aria-hidden/>
+          <div>
+            <CardTitle>Versions</CardTitle>
+            <CardDescription>
+              Timestamps use the server&apos;s local timezone formatting.
+            </CardDescription>
+          </div>
+        </div>
         </CardHeader>
         <CardContent className="p-0">
           {error ? (
@@ -171,7 +176,7 @@ export function ModulePage() {
                 <TableRow className="hover:bg-transparent">
                   <TableHead className="w-[180px]">Version</TableHead>
                   <TableHead>Published</TableHead>
-                  <TableHead className="text-right w-[120px]">Link</TableHead>
+                  <TableHead className="text-center w-[110px]">GitHub</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -191,7 +196,7 @@ export function ModulePage() {
                           rel="noopener noreferrer"
                           className="inline-flex items-center gap-1"
                         >
-                          GitHub
+                          Open
                           <ExternalLink className="size-3.5" />
                         </a>
                       </Button>

@@ -19,12 +19,14 @@ export type ReleaseRow = {
   name: string;
   localizedName: string;
   version: string;
+  dateTime: string;
   kind: string;
   url: string;
 };
 
 export type ModuleReleaseRow = {
   version: string;
+  kind: string;
   dateTime: string;
   url: string;
 };
@@ -91,6 +93,7 @@ export async function fetchReleases(
     name: r.name,
     localizedName: r.localized_name,
     version: versionToString(r.version),
+    dateTime: r.date_time,
     kind: r.kind,
     url: r.url,
   }));
@@ -107,6 +110,7 @@ export async function fetchModuleReleases(
   return data.map((r) => ({
     version: versionToString(r.version),
     dateTime: r.date_time,
+    kind: "unknown",
     url: r.url,
   }));
 }

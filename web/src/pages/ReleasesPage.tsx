@@ -171,8 +171,9 @@ export function ReleasesPage() {
                 <TableRow className="hover:bg-transparent">
                   <TableHead className="w-[140px]">Module</TableHead>
                   <TableHead>Name</TableHead>
-                  <TableHead className="w-[450px]">Version</TableHead>
-                  <TableHead className="w-[10px]">GitHub</TableHead>
+                  <TableHead className="w-[300px]">Version</TableHead>
+                  <TableHead>Published</TableHead>
+                  <TableHead className="text-center w-[110px]">GitHub</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -204,6 +205,9 @@ export function ReleasesPage() {
                           <Badge className="bg-green-500 text-white">Production</Badge>
                         )}
                       </div>
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {r.dateTime}
                     </TableCell>
                     <TableCell className="text-right">
                       <Button variant="ghost" size="sm" asChild>
