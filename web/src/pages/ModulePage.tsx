@@ -1,4 +1,4 @@
-import { ArrowLeft, ExternalLink } from "lucide-react";
+import { ArrowLeft, ExternalLink, ListFilter } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 
@@ -10,8 +10,16 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Popover,
+  PopoverContent,
+  PopoverDescription,
+  PopoverHeader,
+  PopoverTitle,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Switch } from "@/components/ui/switch";
 import {
   Table,
   TableBody,
@@ -73,34 +81,63 @@ export function ModulePage() {
             Release history for this module (newest first).
           </p>
         </div>
-        <div className="flex flex-col gap-2 rounded-lg border bg-card px-4 py-2 shadow-sm">
-          <div className="flex items-center justify-between gap-3">
-            <label
-              htmlFor="rc-toggle-module"
-              className="text-sm font-medium leading-none"
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-2 self-start sm:self-center"
+              aria-label="Filter release types"
             >
-              Include release candidates
-            </label>
-            <Switch
-              id="rc-toggle-module"
-              checked={includeRc}
-              onCheckedChange={setIncludeRc}
-            />
-          </div>
-          <div className="flex items-center justify-between gap-3">
-            <label
-              htmlFor="ms-toggle-module"
-              className="text-sm font-medium leading-none"
-            >
-              Include milestones
-            </label>
-            <Switch
-              id="ms-toggle-module"
-              checked={includeMilestones}
-              onCheckedChange={setIncludeMilestones}
-            />
-          </div>
-        </div>
+              <ListFilter className="size-4 shrink-0" aria-hidden />
+              Release types
+              {(includeRc || includeMilestones) ? (
+                <span className="rounded-sm bg-muted px-1.5 py-0.5 text-xs font-normal text-muted-foreground tabular-nums">
+                  {[includeRc, includeMilestones].filter(Boolean).length}
+                </span>
+              ) : null}
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-80" align="end">
+            <PopoverHeader>
+              <PopoverTitle>Release types</PopoverTitle>
+              <PopoverDescription>
+                Production tags are always considered. Turn on options below to
+                include pre-releases in this module&apos;s release history.
+              </PopoverDescription>
+            </PopoverHeader>
+            <div className="flex flex-col gap-3 pt-2">
+              <div className="flex items-start gap-3">
+                <Checkbox
+                  id="module-include-rc"
+                  checked={includeRc}
+                  onCheckedChange={(v) => setIncludeRc(v === true)}
+                  className="mt-0.5"
+                />
+                <label
+                  htmlFor="module-include-rc"
+                  className="cursor-pointer text-sm font-medium leading-snug peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                >
+                  Include release candidates
+                </label>
+              </div>
+              <div className="flex items-start gap-3">
+                <Checkbox
+                  id="module-include-milestones"
+                  checked={includeMilestones}
+                  onCheckedChange={(v) => setIncludeMilestones(v === true)}
+                  className="mt-0.5"
+                />
+                <label
+                  htmlFor="module-include-milestones"
+                  className="cursor-pointer text-sm font-medium leading-snug peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                >
+                  Include milestones
+                </label>
+              </div>
+            </div>
+          </PopoverContent>
+        </Popover>
       </div>
 
       <Card className="overflow-hidden border shadow-sm">
