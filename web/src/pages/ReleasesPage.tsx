@@ -1,4 +1,4 @@
-import { ExternalLink, ListFilter, Package } from "lucide-react";
+import { ExternalLink, ListFilter, Package, RefreshCw } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 
@@ -74,76 +74,94 @@ export function ReleasesPage() {
             Latest module versions from GitHub.
           </p>
         </div>
-        <Popover>
-          <PopoverTrigger asChild>
-            <Button
-              variant="outline"
-              size="sm"
-              className="gap-2 self-start sm:self-center"
-              aria-label="Filter release types"
-            >
-              <ListFilter className="size-4 shrink-0" aria-hidden />
-              Release types
-              {(includeRc || includeMilestones) ? (
-                <span className="rounded-sm bg-muted px-1.5 py-0.5 text-xs font-normal text-muted-foreground tabular-nums">
-                  {[includeRc, includeMilestones].filter(Boolean).length}
-                </span>
-              ) : null}
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-80" align="end">
-            <PopoverHeader>
-              <PopoverTitle>Release types</PopoverTitle>
-              <PopoverDescription>
-                Production tags are always considered. Turn on options below to
-                include pre-releases when resolving the newest version per
-                module.
-              </PopoverDescription>
-            </PopoverHeader>
-            <div className="flex flex-col gap-3 pt-2">
-              <div className="flex items-start gap-3">
-                <Checkbox
-                  id="include-rc"
-                  checked={includeRc}
-                  onCheckedChange={(v) => setIncludeRc(v === true)}
-                  className="mt-0.5"
-                />
-                <label
-                  htmlFor="include-rc"
-                  className="cursor-pointer text-sm font-medium leading-snug peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                >
-                  Include release candidates
-                </label>
-              </div>
-              <div className="flex items-start gap-3">
-                <Checkbox
-                  id="include-milestones"
-                  checked={includeMilestones}
-                  onCheckedChange={(v) => setIncludeMilestones(v === true)}
-                  className="mt-0.5"
-                />
-                <label
-                  htmlFor="include-milestones"
-                  className="cursor-pointer text-sm font-medium leading-snug peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                >
-                  Include milestones
-                </label>
-              </div>
-            </div>
-          </PopoverContent>
-        </Popover>
       </div>
 
       <Card className="overflow-hidden border shadow-sm">
         <CardHeader className="border-b bg-muted/30">
-          <div className="flex items-center gap-2">
-            <Package className="size-5 text-muted-foreground" aria-hidden />
-            <div>
-              <CardTitle>Modules</CardTitle>
-              <CardDescription>
-                Sorted by module name. Version reflects the newest matching tag
-                per module.
-              </CardDescription>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div className="flex items-center gap-2">
+              <Package className="size-5 text-muted-foreground" aria-hidden />
+              <div>
+                <CardTitle>Modules</CardTitle>
+                <CardDescription>
+                  Sorted by module name. Version reflects the newest matching tag
+                  per module.
+                </CardDescription>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 self-start sm:self-center">
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-2"
+                onClick={() => void load()}
+                disabled={loading}
+                aria-label="Reload releases"
+              >
+                <RefreshCw
+                  className={`size-4 shrink-0 ${loading ? "animate-spin" : ""}`}
+                  aria-hidden
+                />
+                Reload
+              </Button>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="gap-2"
+                    aria-label="Filter release types"
+                  >
+                    <ListFilter className="size-4 shrink-0" aria-hidden />
+                    Release types
+                    {(includeRc || includeMilestones) ? (
+                      <span className="rounded-sm bg-muted px-1.5 py-0.5 text-xs font-normal text-muted-foreground tabular-nums">
+                        {[includeRc, includeMilestones].filter(Boolean).length}
+                      </span>
+                    ) : null}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-80" align="end">
+                  <PopoverHeader>
+                    <PopoverTitle>Release types</PopoverTitle>
+                    <PopoverDescription>
+                      Production tags are always considered. Turn on options below to
+                      include pre-releases when resolving the newest version per
+                      module.
+                    </PopoverDescription>
+                  </PopoverHeader>
+                  <div className="flex flex-col gap-3 pt-2">
+                    <div className="flex items-start gap-3">
+                      <Checkbox
+                        id="include-rc"
+                        checked={includeRc}
+                        onCheckedChange={(v) => setIncludeRc(v === true)}
+                        className="mt-0.5"
+                      />
+                      <label
+                        htmlFor="include-rc"
+                        className="cursor-pointer text-sm font-medium leading-snug peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                      >
+                        Include release candidates
+                      </label>
+                    </div>
+                    <div className="flex items-start gap-3">
+                      <Checkbox
+                        id="include-milestones"
+                        checked={includeMilestones}
+                        onCheckedChange={(v) => setIncludeMilestones(v === true)}
+                        className="mt-0.5"
+                      />
+                      <label
+                        htmlFor="include-milestones"
+                        className="cursor-pointer text-sm font-medium leading-snug peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                      >
+                        Include milestones
+                      </label>
+                    </div>
+                  </div>
+                </PopoverContent>
+              </Popover>
             </div>
           </div>
         </CardHeader>
