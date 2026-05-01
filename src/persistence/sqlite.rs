@@ -1,5 +1,6 @@
 use std::collections::{HashMap, HashSet};
 
+use crate::domain::module::Module;
 use crate::domain::release::{Release, ReleaseKind};
 use crate::persistence::{
     Include, PersistenceError, version_from_row, version_kind_db_str, version_parts,
@@ -58,6 +59,36 @@ impl SqliteReleasesStore {
             map.insert(row.try_get("name")?, row.try_get("localized_name")?);
         }
         Ok(map)
+    }
+
+    pub async fn list_modules(
+        &self,
+        name: Option<&str>,
+    ) -> Result<Vec<Module>, PersistenceError> {
+        let rows = match name {
+            Some(n) => {
+                sqlx::query(
+                    "SELECT name, localized_name FROM modules WHERE name = ? ORDER BY name ASC",
+                )
+                .bind(n)
+                .fetch_all(&self.pool)
+                .await?
+            }
+            None => {
+                sqlx::query("SELECT name, localized_name FROM modules ORDER BY name ASC")
+                    .fetch_all(&self.pool)
+                    .await?
+            }
+        };
+
+        let mut out = Vec::with_capacity(rows.len());
+        for row in rows {
+            out.push(Module {
+                name: row.try_get("name")?,
+                localized_name: row.try_get("localized_name")?,
+            });
+        }
+        Ok(out)
     }
 
     pub async fn get_all_releases(

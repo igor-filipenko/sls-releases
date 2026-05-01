@@ -99,6 +99,13 @@ impl ReleasesStore for AlwaysFailingStore {
     async fn load_module_localizations(&self) -> Result<HashMap<String, String>, PersistenceError> {
         Err(PersistenceError::InvalidVersionKind("test".into()))
     }
+
+    async fn list_modules(
+        &self,
+        _name: Option<&str>,
+    ) -> Result<Vec<sls_releases::domain::module::Module>, PersistenceError> {
+        Err(PersistenceError::InvalidVersionKind("test".into()))
+    }
 }
 
 #[tokio::test]

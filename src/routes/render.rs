@@ -1,3 +1,4 @@
+use crate::domain::module::Module;
 use crate::domain::release::{ModuleRelease, Release};
 
 pub fn releases_table_html(
@@ -36,6 +37,24 @@ pub fn module_releases_csv(module_releases: &[ModuleRelease]) -> String {
     module_releases
         .iter()
         .map(|r| r.as_csv_row())
+        .collect::<Vec<_>>()
+        .join("\n")
+        + "\n"
+}
+
+pub fn modules_table_html(modules: &[Module]) -> String {
+    let rows = modules
+        .iter()
+        .map(|m| m.as_html_row())
+        .collect::<Vec<_>>()
+        .join("\n");
+    format!("<table rules=\"all\">{rows}</table>")
+}
+
+pub fn modules_csv(modules: &[Module]) -> String {
+    modules
+        .iter()
+        .map(|m| m.as_csv_row())
         .collect::<Vec<_>>()
         .join("\n")
         + "\n"

@@ -5,6 +5,7 @@ pub use sqlite::SqliteReleasesStore;
 
 use std::collections::HashMap;
 
+use crate::domain::module::Module;
 use crate::domain::release::{Release, ReleaseKind, Version};
 use async_trait::async_trait;
 
@@ -54,6 +55,10 @@ pub trait ReleasesStore: Send + Sync {
 
     /// Map of module `name` → `localized_name` from the `modules` table.
     async fn load_module_localizations(&self) -> Result<HashMap<String, String>, PersistenceError>;
+
+    /// Lists modules from the `modules` table, ordered by `name` ascending.
+    /// When `name` is `Some`, returns at most one row with that exact primary key.
+    async fn list_modules(&self, name: Option<&str>) -> Result<Vec<Module>, PersistenceError>;
 }
 
 #[async_trait]
@@ -76,6 +81,10 @@ impl ReleasesStore for SqliteReleasesStore {
 
     async fn load_module_localizations(&self) -> Result<HashMap<String, String>, PersistenceError> {
         SqliteReleasesStore::load_module_localizations(self).await
+    }
+
+    async fn list_modules(&self, name: Option<&str>) -> Result<Vec<Module>, PersistenceError> {
+        SqliteReleasesStore::list_modules(self, name).await
     }
 }
 
