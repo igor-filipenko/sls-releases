@@ -15,6 +15,8 @@ pub fn csv_non_empty_line_count(s: &str) -> usize {
     s.lines().filter(|l| !l.is_empty()).count()
 }
 
+#[path = "modules.rs"]
+mod modules;
 #[path = "releases.rs"]
 mod releases;
 #[path = "transactions.rs"]

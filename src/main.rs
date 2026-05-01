@@ -12,6 +12,7 @@ use sls_releases::config::{CliConfig, load_config};
 use sls_releases::jobs::sync::spawn_periodic_sync;
 use sls_releases::persistence::{ReleasesStore, SqliteReleasesStore, migrations};
 use sls_releases::routes;
+use sls_releases::routes::modules::ModulesState;
 use sls_releases::routes::releases::ReleasesState;
 use sls_releases::routes::transactions::TransactionsState;
 
@@ -72,6 +73,9 @@ async fn main() -> anyhow::Result<()> {
 
     let app = Router::new()
         .merge(routes::releases::router(ReleasesState {
+            store: store.clone(),
+        }))
+        .merge(routes::modules::router(ModulesState {
             store: store.clone(),
         }))
         .merge(routes::transactions::router(TransactionsState {
