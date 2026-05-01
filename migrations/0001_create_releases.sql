@@ -12,7 +12,7 @@ INSERT INTO modules (name, localized_name) VALUES
     ('discounts', 'Скидки'),
     ('dwh', 'Аналитика'),
     ('favorites', 'Любимый товар'),
-    ('gateway', 'gateway'),
+    ('gateway', 'Внешний API'),
     ('limits', 'Лимиты'),
     ('offers', 'Офферы'),
     ('purchases', 'Чеки'),

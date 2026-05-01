@@ -214,13 +214,13 @@ export function ReleasesPage() {
                           {r.version}
                         </span>
                         {isRcVersion(r.kind) ? (
-                          <Badge className="bg-yellow-400 text-black">RC</Badge>
+                          <Badge className="bg-yellow-700 text-black">RC</Badge>
                         ) : isMilestoneVersion(r.kind) ? (
-                          <Badge className="bg-red-500 text-white">
+                          <Badge className="bg-blue-700 text-white">
                             Milestone
                           </Badge>
                         ) : (
-                          <Badge className="bg-green-500 text-white">Production</Badge>
+                          <Badge className="bg-green-700 text-white">Production</Badge>
                         )}
                       </div>
                     </TableCell>
