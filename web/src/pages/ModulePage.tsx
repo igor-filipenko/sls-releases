@@ -28,7 +28,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { fetchModuleReleases, type ModuleReleaseRow } from "@/lib/api";
+import { fetchModuleReleases, type ReleaseRow } from "@/lib/api";
 
 export function ModulePage() {
   const { name: rawName } = useParams<{ name: string }>();
@@ -36,7 +36,7 @@ export function ModulePage() {
 
   const [includeRc, setIncludeRc] = useState(false);
   const [includeMilestones, setIncludeMilestones] = useState(false);
-  const [rows, setRows] = useState<ModuleReleaseRow[]>([]);
+  const [rows, setRows] = useState<ReleaseRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 

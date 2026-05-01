@@ -472,6 +472,8 @@ async fn releases_module_json_accept_header_renders_json_and_orders_versions_des
     assert_eq!(arr.len(), 2);
 
     // Ordering: version desc, so 2.0.0 should appear before 1.0.0.
+    assert_eq!(arr[0]["name"], "m");
+    assert_eq!(arr[0]["localized_name"], "M");
     assert_eq!(arr[0]["version"]["Release"]["major"], 2);
     assert_eq!(arr[1]["version"]["Release"]["major"], 1);
 }

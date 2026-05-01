@@ -10,9 +10,7 @@ use axum::Router;
 
 use crate::domain::release::{ModuleRelease, Release};
 use crate::persistence::{Include, ReleasesStore};
-use crate::routes::dto::releases::{
-    ModuleReleaseRow, ReleaseRow, ReleasesQuery,
-};
+use crate::routes::dto::releases::{ReleaseRow, ReleasesQuery};
 use crate::routes::render;
 
 #[derive(Clone)]
@@ -96,32 +94,26 @@ async fn list_module(
         .await
         .map_err(|_| StatusCode::BAD_GATEWAY)?;
 
-    let mut list: Vec<ModuleRelease> = all
-        .into_iter()
-        .map(|r| ModuleRelease {
-            version: r.version,
-            url: r.url,
-            date_time: r.date_time,
-        })
-        .collect();
-
-    list.sort_by(|a, b| b.version.cmp(&a.version));
+    let mut releases = all;
+    releases.sort_by(|a, b| b.version.cmp(&a.version));
 
     if accepts_html(&headers) {
+        let module_views = releases_as_module_views(&releases);
         Ok((
             StatusCode::OK,
             [("content-type", "text/html; charset=utf-8")],
-            render::module_releases_table_html(&list),
+            render::module_releases_table_html(&module_views),
         )
             .into_response())
     } else if accepts_json(&headers) {
-        let body: Vec<ModuleReleaseRow> = list.iter().map(ModuleReleaseRow::from).collect();
+        let body: Vec<ReleaseRow> = releases.iter().map(ReleaseRow::from).collect();
         Ok(Json(body).into_response())
     } else {
+        let module_views = releases_as_module_views(&releases);
         Ok((
             StatusCode::OK,
             [("content-type", "text/plain; charset=utf-8")],
-            render::module_releases_csv(&list),
+            render::module_releases_csv(&module_views),
         ).into_response())
     }
 }
@@ -151,4 +143,15 @@ fn releases_query_include(use_rc: bool, use_ms: bool) -> Include {
         candidates: use_rc,
         milestones: use_ms,
     }
+}
+
+fn releases_as_module_views(releases: &[Release]) -> Vec<ModuleRelease> {
+    releases
+        .iter()
+        .map(|r| ModuleRelease {
+            version: r.version.clone(),
+            url: r.url.clone(),
+            date_time: r.date_time.clone(),
+        })
+        .collect()
 }

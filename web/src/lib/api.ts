@@ -24,23 +24,10 @@ export type ReleaseRow = {
   url: string;
 };
 
-export type ModuleReleaseRow = {
-  version: string;
-  kind: string;
-  dateTime: string;
-  url: string;
-};
-
 type ReleaseJson = {
   name: string;
   localized_name: string;
   kind: string;
-  version: VersionJson;
-  url: string;
-  date_time: string;
-};
-
-type ModuleReleaseJson = {
   version: VersionJson;
   url: string;
   date_time: string;
@@ -103,14 +90,16 @@ export async function fetchModuleReleases(
   moduleName: string,
   includeRc: boolean,
   includeMilestones: boolean
-): Promise<ModuleReleaseRow[]> {
-  const data = await fetchJson<ModuleReleaseJson[]>(
+): Promise<ReleaseRow[]> {
+  const data = await fetchJson<ReleaseJson[]>(
     buildModuleReleasesPath(moduleName, includeRc, includeMilestones)
   );
   return data.map((r) => ({
+    name: r.name,
+    localizedName: r.localized_name,
     version: versionToString(r.version),
     dateTime: r.date_time,
-    kind: "unknown",
+    kind: r.kind,
     url: r.url,
   }));
 }
