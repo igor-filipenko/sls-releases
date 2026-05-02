@@ -28,7 +28,9 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { fetchModuleReleases, type ReleaseRow } from "@/lib/api";
+import { fetchModule, fetchModuleReleases, type Module, type ReleaseRow } from "@/lib/api";
+import { Badge } from "@/components/ui/badge";
+import { isMilestoneVersion, isRcVersion } from "@/lib/utils";
 
 export function ModulePage() {
   const { name: rawName } = useParams<{ name: string }>();
@@ -36,16 +38,21 @@ export function ModulePage() {
 
   const [includeRc, setIncludeRc] = useState(false);
   const [includeMilestones, setIncludeMilestones] = useState(false);
+  const [module, setModule] = useState<Module>({name: "", localizedName: ""});
   const [rows, setRows] = useState<ReleaseRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
+    console.log("start! moduleName", moduleName);
     if (!moduleName) return;
     setLoading(true);
     setError(null);
     try {
+      console.log("fetchModule", moduleName);
+      setModule(await fetchModule(moduleName));
       setRows(await fetchModuleReleases(moduleName, includeRc, includeMilestones));
+      console.log(module);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to load history");
       setRows([]);
@@ -75,10 +82,10 @@ export function ModulePage() {
             </Link>
           </Button>
           <h1 className="text-3xl font-semibold tracking-tight font-mono">
-            {moduleName}
+            {module.localizedName}
           </h1>
           <p className="text-muted-foreground">
-            Release history for this module (newest first).
+            Release history for the module {module.name} (newest first).
           </p>
         </div>
       </div>
@@ -201,7 +208,20 @@ export function ModulePage() {
                 {rows.map((r) => (
                   <TableRow key={`${r.version}-${r.url}`}>
                     <TableCell className="font-mono text-sm tabular-nums">
-                      {r.version}
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono text-sm tabular-nums">
+                          {r.version}
+                        </span>
+                        {isRcVersion(r.kind) ? (
+                          <Badge className="bg-yellow-700 text-black">RC</Badge>
+                        ) : isMilestoneVersion(r.kind) ? (
+                          <Badge className="bg-blue-700 text-white">
+                            Milestone
+                          </Badge> 
+                        ) : (
+                          <Badge className="bg-green-700 text-white">Production</Badge>
+                        )}
+                      </div>
                     </TableCell>
                     <TableCell className="text-muted-foreground">
                       {r.dateTime}

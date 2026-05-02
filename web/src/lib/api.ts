@@ -15,6 +15,11 @@ function versionToString(v: VersionJson): string {
   return `${major}.${minor}.${patch}-RC${number}`;
 }
 
+export type Module = {
+  name: string;
+  localizedName: string;
+}
+
 export type ReleaseRow = {
   name: string;
   localizedName: string;
@@ -22,6 +27,11 @@ export type ReleaseRow = {
   dateTime: string;
   kind: string;
   url: string;
+};
+
+type ModuleJson = {
+  name: string;
+  localized_name: string;
 };
 
 type ReleaseJson = {
@@ -32,6 +42,12 @@ type ReleaseJson = {
   url: string;
   date_time: string;
 };
+
+export function buildModulesPath(
+  name?: string
+): string {
+  return name ? `/sls/modules?name=${name}` : "/sls/modules";
+}
 
 export function buildReleasesPath(
   includeRc: boolean,
@@ -67,6 +83,16 @@ export async function fetchJson<T>(path: string): Promise<T> {
     );
   }
   return res.json() as Promise<T>;
+}
+
+export async function fetchModule(name: string): Promise<Module> {
+  const data = await fetchJson<ModuleJson[]>(buildModulesPath(name));
+  const m = data[0];
+  if (!m) throw new Error("Module not found");
+  return {
+    name: m.name,
+    localizedName: m.localized_name,
+  };
 }
 
 export async function fetchReleases(

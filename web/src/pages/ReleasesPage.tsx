@@ -30,14 +30,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { fetchReleases, type ReleaseRow } from "@/lib/api";
-
-function isRcVersion(version: string): boolean {
-  return version.includes("Candidate");
-}
-
-function isMilestoneVersion(version: string): boolean {
-  return version.includes("Milestone");
-}
+import { isMilestoneVersion, isRcVersion } from "@/lib/utils";
 
 export function ReleasesPage() {
   const [includeRc, setIncludeRc] = useState(false);
