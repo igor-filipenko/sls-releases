@@ -44,15 +44,12 @@ export function ModulePage() {
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
-    console.log("start! moduleName", moduleName);
     if (!moduleName) return;
     setLoading(true);
     setError(null);
     try {
-      console.log("fetchModule", moduleName);
       setModule(await fetchModule(moduleName));
       setRows(await fetchModuleReleases(moduleName, includeRc, includeMilestones));
-      console.log(module);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to load history");
       setRows([]);
