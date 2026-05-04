@@ -1,4 +1,4 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::HashSet;
 
 use async_trait::async_trait;
 use axum::body::Body;
@@ -94,10 +94,6 @@ impl ReleasesStore for AlwaysFailingStore {
 
     async fn replace_all_releases(&self, _releases: Vec<Release>) -> Result<(), PersistenceError> {
         Ok(())
-    }
-
-    async fn load_module_localizations(&self) -> Result<HashMap<String, String>, PersistenceError> {
-        Err(PersistenceError::InvalidVersionKind("test".into()))
     }
 
     async fn list_modules(

@@ -153,8 +153,6 @@ async fn modules_list_html_renders_table() {
 
 #[tokio::test]
 async fn modules_list_store_error_maps_to_502() {
-    use std::collections::HashMap;
-
     use async_trait::async_trait;
     use sls_releases::domain::release::Release;
     use sls_releases::persistence::{Include, PersistenceError, ReleasesStore};
@@ -183,12 +181,6 @@ async fn modules_list_store_error_maps_to_502() {
             _releases: Vec<Release>,
         ) -> Result<(), PersistenceError> {
             Ok(())
-        }
-
-        async fn load_module_localizations(
-            &self,
-        ) -> Result<HashMap<String, String>, PersistenceError> {
-            Err(PersistenceError::InvalidVersionKind("test".into()))
         }
 
         async fn list_modules(

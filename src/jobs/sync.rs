@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -7,8 +8,11 @@ use crate::persistence::ReleasesStore;
 
 /// One GitHub fetch + SQLite replace (same behavior as the background refresh loop body).
 pub async fn sync_releases_once(github: &Arc<dyn ReleasesClient>, store: &Arc<dyn ReleasesStore>) {
-    let known_modules = match store.load_module_localizations().await {
-        Ok(m) => m,
+    let known_modules: HashMap<String, String> = match store.list_modules(None).await {
+        Ok(modules) => modules
+            .into_iter()
+            .map(|m| (m.name, m.localized_name))
+            .collect(),
         Err(e) => {
             tracing::warn!(error = %e, "releases refresh failed to load modules from database");
             return;

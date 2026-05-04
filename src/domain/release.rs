@@ -100,25 +100,6 @@ pub struct Release {
     pub closed: bool,
 }
 
-impl Release {
-    pub fn as_csv_row(&self) -> String {
-        format!(
-            "{}, {}, {}, {}",
-            self.name, self.localized_name, self.version, self.url
-        )
-    }
-
-    pub fn as_html_row(&self, base_url: &str, use_candidate: bool, use_milestones: bool) -> String {
-        format!(
-            "<tr>\n  <td><a href='{base_url}/{name}?rc={use_candidate}&ms={use_milestones}'>{name}</a></td>\n  <td>{localized}</td>\n  <td><a href='{url}'>{version}</a></td>\n</tr>",
-            name = self.name,
-            localized = self.localized_name,
-            url = self.url,
-            version = self.version
-        )
-    }
-}
-
 impl Ord for Release {
     fn cmp(&self, other: &Self) -> Ordering {
         match self.version.cmp(&other.version) {
@@ -141,17 +122,3 @@ pub struct ModuleRelease {
     pub date_time: String,
 }
 
-impl ModuleRelease {
-    pub fn as_csv_row(&self) -> String {
-        format!("{}, {}, {}", self.version, self.date_time, self.url)
-    }
-
-    pub fn as_html_row(&self) -> String {
-        format!(
-            "<tr>\n  <td><a href='{url}'>{version}</a></td>\n  <td>{date_time}</td>\n</tr>",
-            url = self.url,
-            version = self.version,
-            date_time = self.date_time
-        )
-    }
-}

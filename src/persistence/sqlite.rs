@@ -1,4 +1,4 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::HashSet;
 
 use crate::domain::module::Module;
 use crate::domain::release::{Release, ReleaseKind};
@@ -46,14 +46,6 @@ impl SqliteReleasesStore {
 
     pub fn pool(&self) -> &SqlitePool {
         &self.pool
-    }
-
-    pub async fn load_module_localizations(
-        &self,
-    ) -> Result<HashMap<String, String>, PersistenceError> {
-        let modules = get_modules(&self.pool, None).await?;
-        let map = modules.into_iter().map(|m| (m.name, m.localized_name)).collect();
-        Ok(map)
     }
 
     pub async fn list_modules(
