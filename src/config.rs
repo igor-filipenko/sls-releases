@@ -1,6 +1,6 @@
 use serde::Deserialize;
 use std::env;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::string::ToString;
 
 ///
@@ -29,6 +29,7 @@ pub struct AppConfig {
     pub github_token: String,
     pub github_user_agent: String,
     pub sqlite_path: String,
+    pub web_path: Option<String>,
     pub refresh_interval_secs: u64,
 }
 
@@ -36,6 +37,7 @@ pub struct CliConfig {
     pub config_path: Option<std::path::PathBuf>,
     pub server_port: Option<u16>,
     pub database: Option<String>,
+    pub web: Option<std::path::PathBuf>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -46,6 +48,8 @@ struct FileConfig {
     github: RawGithub,
     #[serde(default)]
     persistence: RawPersistence,
+    #[serde(default)]
+    web: RawWeb,
     #[serde(default)]
     refresh: RawRefresh,
 }
@@ -79,6 +83,12 @@ struct RawPersistence {
 }
 
 #[derive(Debug, Default, Deserialize)]
+struct RawWeb {
+    #[serde(default)]
+    path: Option<String>,
+}
+
+#[derive(Debug, Default, Deserialize)]
 struct RawRefresh {
     #[serde(default)]
     interval_secs: u64,
@@ -92,6 +102,8 @@ pub enum ConfigError {
     MissingGithubToken,
     #[error("persistence.sqlite_path is empty (set path to SQLite database file)")]
     MissingSqlitePath,
+    #[error("web.path is empty or invalid")]
+    MissingWebPath,
     #[error("refresh.interval_secs must be greater than zero")]
     InvalidRefreshInterval,
 }
@@ -106,6 +118,7 @@ pub fn load_config(cli: &CliConfig) -> Result<AppConfig, ConfigError> {
                 .map_err(|_| ConfigError::MissingGithubToken)?,
             github_user_agent: default_user_agent(),
             sqlite_path: get_database_path(&cli.database)?,
+            web_path: get_web_path(&cli.web)?,
             refresh_interval_secs: DEFAULT_REFRESH_INTERVAL_SECS,
         })
     }
@@ -134,6 +147,8 @@ fn load_config_from_path(path: &Path) -> Result<AppConfig, ConfigError> {
         return Err(ConfigError::MissingSqlitePath);
     }
 
+    let web_path = validate_web_path(&raw.web.path)?;
+
     let refresh_interval_secs = raw.refresh.interval_secs;
     if refresh_interval_secs == 0 {
         return Err(ConfigError::InvalidRefreshInterval);
@@ -144,6 +159,7 @@ fn load_config_from_path(path: &Path) -> Result<AppConfig, ConfigError> {
         github_token,
         github_user_agent,
         sqlite_path,
+        web_path,
         refresh_interval_secs,
     })
 }
@@ -155,12 +171,38 @@ fn get_database_path(path: &Option<String>) -> Result<String, ConfigError> {
     }
 }
 
+fn get_web_path(path: &Option<PathBuf>) -> Result<Option<String>, ConfigError> {
+    if path.is_none() {
+        return Ok(None);
+    }
+    let Some(path) = path.as_ref() else {
+        return Err(ConfigError::MissingWebPath);
+    };
+    let str = path.to_string_lossy().to_string();
+    validate_web_path(&Some(str))
+}
+
 fn validate_sqlite_path(path: &str) -> Result<String, ConfigError> {
     let trimmed = path.trim();
     if trimmed.is_empty() {
         return Err(ConfigError::MissingSqlitePath);
     }
     Ok(trimmed.to_string())
+}
+
+fn validate_web_path(path: &Option<String>) -> Result<Option<String>, ConfigError> {
+    if path.is_none() {
+        return Ok(None);
+    }
+
+    let Some(str) = path.as_ref() else {
+        return Err(ConfigError::MissingWebPath);
+    };
+    let index_path = std::path::Path::new(&str).join("index.html");
+    if !index_path.exists() {
+        return Err(ConfigError::MissingWebPath);
+    }
+    Ok(Some(str.to_string()))
 }
 
 fn default_user_agent() -> String {
@@ -215,6 +257,7 @@ mod tests {
                 config_path: None,
                 server_port: None,
                 database: None,
+                web: None,
             };
             let cfg = load_config(&cli).expect("load_config");
             assert_eq!(cfg.server_port, DEFAULT_PORT);
@@ -232,6 +275,7 @@ mod tests {
                 config_path: None,
                 server_port: Some(9000),
                 database: None,
+                web: None,
             };
             let cfg = load_config(&cli).expect("load_config");
             assert_eq!(cfg.server_port, 9000);
@@ -245,6 +289,7 @@ mod tests {
                 config_path: None,
                 server_port: None,
                 database: None,
+                web: None,
             };
             let err = load_config(&cli).expect_err("expected missing token");
             assert!(matches!(err, ConfigError::MissingGithubToken));
@@ -280,6 +325,7 @@ interval_secs = 60
                 config_path: Some(file.path().to_path_buf()),
                 server_port: None,
                 database: None,
+                web: None,
             };
             let cfg = load_config(&cli).expect("load_config");
             assert_eq!(cfg.server_port, DEFAULT_PORT, "server.port defaults");
@@ -293,4 +339,46 @@ interval_secs = 60
             assert_eq!(cfg.refresh_interval_secs, 60);
         });
     }
+
+    #[test]
+    fn cli_with_web_path() {
+        let temp_dir = tempfile::TempDir::new().expect("temp dir");
+        let index_html_path = temp_dir.path().join("index.html");
+        std::fs::write(&index_html_path, "<html></html>").expect("write index.html");
+
+        with_github_token("cli-test-token", || {
+            let cli = CliConfig {
+                config_path: None,
+                server_port: None,
+                database: None,
+                web: Some(temp_dir.path().to_path_buf()),
+            };
+
+            let cfg = load_config(&cli).expect("load_config");
+
+            assert!(cfg.web_path.is_some(), "expected web path");
+        });   
+    }
+
+    #[test]
+    fn cli_with_invalid_web_path() {
+        let temp_dir = tempfile::TempDir::new().expect("temp dir");
+        let index_html_path = temp_dir.path().join("index.txt");
+        std::fs::write(&index_html_path, "invalid path").expect("write index.txt");
+
+        with_github_token("cli-test-token", || {
+            let cli = CliConfig {
+                config_path: None,
+                server_port: None,
+                database: None,
+                web: Some(temp_dir.path().to_path_buf()),
+            };
+
+            let result = load_config(&cli);
+
+            assert!(result.is_err(), "expected error");
+            assert!(matches!(result.err(), Some(ConfigError::MissingWebPath)));
+        });
+    }
+
 }

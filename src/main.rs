@@ -1,7 +1,12 @@
+use std::path::PathBuf;
 use std::sync::Arc;
 
 use anyhow::Context;
 use axum::Router;
+
+#[cfg(not(feature = "embedded-web"))]
+use axum::http::Uri;
+
 use chrono::Offset;
 use clap::Parser;
 use tracing_subscriber::EnvFilter;
@@ -37,6 +42,9 @@ struct Cli {
     /// SQLite database file path when `--config` is not used [default: releases.db].
     #[arg(short = 'd', long = "database")]
     database: Option<String>,
+    /// Path to web application
+    #[arg(short = 'w', long = "web")]
+    web: Option<std::path::PathBuf>,
 }
 
 #[tokio::main]
@@ -52,6 +60,7 @@ async fn main() -> anyhow::Result<()> {
         config_path: cli.config,
         server_port: cli.port,
         database: cli.database,
+        web: cli.web,
     };
     let cfg = load_config(&base_cfg).context("failed to load config")?;
 
@@ -80,8 +89,23 @@ async fn main() -> anyhow::Result<()> {
         }))
         .merge(routes::transactions::router(TransactionsState {
             zone_offset: chrono::Local::now().offset().fix(),
-        }))
-        .fallback(routes::web::fallback);
+        }));
+
+    let web_root = cfg.web_path.map(PathBuf::from);
+
+    #[cfg(feature = "embedded-web")]
+    if let Some(_) = web_root {
+        Err(anyhow::anyhow!("web path is not supported when embedded-web feature is enabled"))?;
+    }
+    
+    #[cfg(feature = "embedded-web")]
+    let app = app.fallback(axum::routing::get(routes::web::fallback));
+
+    #[cfg(not(feature = "embedded-web"))]
+    let app = app.fallback(axum::routing::get(move |uri: Uri| {
+        let web_root = web_root.clone();
+        async move { routes::web::fallback(uri, web_root).await }
+    }));
 
     let addr = std::net::SocketAddr::from(([0, 0, 0, 0], cfg.server_port));
     tracing::info!(%addr, "listening");

@@ -1,13 +1,80 @@
-use axum::http::{StatusCode, Uri};
-use axum::response::IntoResponse;
+#[cfg(not(feature = "embedded-web"))]
+use tracing::log;
 
 #[cfg(not(feature = "embedded-web"))]
-pub async fn fallback(_uri: Uri) -> impl IntoResponse {
-    StatusCode::NOT_FOUND
+use std::path::{Path, PathBuf};
+
+#[cfg(not(feature = "embedded-web"))]
+use axum::body::Body;
+#[cfg(not(feature = "embedded-web"))]
+use axum::http::{header, HeaderValue, StatusCode, Uri};
+#[cfg(not(feature = "embedded-web"))]
+use axum::response::{IntoResponse, Response};
+
+#[cfg(not(feature = "embedded-web"))]
+pub async fn fallback(uri: Uri, web_root: Option<PathBuf>) -> impl IntoResponse {
+    let Some(root) = web_root.as_ref() else {
+        log::warn!("web path not set");
+        return StatusCode::NOT_FOUND.into_response();
+    };
+
+    let path = uri.path().trim_start_matches('/');
+
+    if path.starts_with("sls/") {
+        log::warn!("path not allowed: {}", path);
+        return StatusCode::NOT_FOUND.into_response();
+    }
+
+    if path.is_empty() {
+        return serve_path(root, "index.html").await;
+    }
+
+    // SPA routing: only fall back on "route-like" paths, not on missing asset-like paths.
+    if !path.contains('.') {
+        return serve_path(root, "index.html").await;
+    }
+    
+    StatusCode::NOT_FOUND.into_response()
+}
+
+#[cfg(not(feature = "embedded-web"))]
+async fn serve_path(root: &Path, path: &str) -> Response<Body> {
+    let file_path = root.join(path);
+    match tokio::fs::read(&file_path).await {
+        Ok(bytes) => response_for_file(path, bytes),
+        Err(_) => StatusCode::NOT_FOUND.into_response(),
+    }
+}
+
+#[cfg(not(feature = "embedded-web"))]
+fn response_for_file(path: &str, bytes: Vec<u8>) -> Response<Body> {
+    let mime = mime_guess::from_path(path).first_or_octet_stream();
+
+    let mut resp = Response::new(Body::from(bytes));
+    *resp.status_mut() = StatusCode::OK;
+
+    let headers = resp.headers_mut();
+    headers.insert(
+        header::CONTENT_TYPE,
+        HeaderValue::from_str(mime.as_ref())
+            .unwrap_or_else(|_| HeaderValue::from_static("application/octet-stream")),
+    );
+
+    if path == "index.html" {
+        headers.insert(header::CACHE_CONTROL, HeaderValue::from_static("no-cache"));
+    } else if path.starts_with("assets/") {
+        headers.insert(
+            header::CACHE_CONTROL,
+            HeaderValue::from_static("public, max-age=31536000, immutable"),
+        );
+    }
+
+    resp
 }
 
 #[cfg(feature = "embedded-web")]
 mod embedded {
+    use tracing::log;
     use axum::body::Body;
     use axum::http::{header, HeaderValue, Response, StatusCode, Uri};
     use axum::response::IntoResponse;
@@ -21,6 +88,7 @@ mod embedded {
         let path = uri.path().trim_start_matches('/');
 
         if path.starts_with("sls/") {
+            log::warn!("path not allowed: {}", path);
             return StatusCode::NOT_FOUND.into_response();
         }
 
