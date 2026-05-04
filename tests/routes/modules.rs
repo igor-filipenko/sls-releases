@@ -152,7 +152,7 @@ async fn modules_list_html_renders_table() {
 }
 
 #[tokio::test]
-async fn modules_list_store_error_maps_to_502() {
+async fn modules_list_persistence_invalid_version_returns_500() {
     use async_trait::async_trait;
     use sls_releases::domain::release::Release;
     use sls_releases::persistence::{Include, PersistenceError, ReleasesStore};
@@ -193,6 +193,60 @@ async fn modules_list_store_error_maps_to_502() {
 
     let app = routes::modules::router(ModulesState {
         store: std::sync::Arc::new(AlwaysFailingStore),
+    });
+
+    let resp = app
+        .oneshot(
+            Request::builder().uri("/sls/modules").body(Body::empty()).unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(resp.status(), StatusCode::INTERNAL_SERVER_ERROR);
+}
+
+#[tokio::test]
+async fn modules_list_persistence_sql_error_returns_502() {
+    use async_trait::async_trait;
+    use sls_releases::domain::release::Release;
+    use sls_releases::persistence::{Include, PersistenceError, ReleasesStore};
+
+    struct SqlRowNotFoundStore;
+
+    #[async_trait]
+    impl ReleasesStore for SqlRowNotFoundStore {
+        async fn get_all_releases(
+            &self,
+            _include: &Include,
+        ) -> Result<Vec<Release>, PersistenceError> {
+            Ok(vec![])
+        }
+
+        async fn get_releases_by_name(
+            &self,
+            _name: &str,
+            _include: &Include,
+        ) -> Result<Vec<Release>, PersistenceError> {
+            Ok(vec![])
+        }
+
+        async fn replace_all_releases(
+            &self,
+            _releases: Vec<Release>,
+        ) -> Result<(), PersistenceError> {
+            Ok(())
+        }
+
+        async fn list_modules(
+            &self,
+            _name: Option<&str>,
+        ) -> Result<Vec<sls_releases::domain::module::Module>, PersistenceError> {
+            Err(PersistenceError::Sql(sqlx::Error::RowNotFound))
+        }
+    }
+
+    let app = routes::modules::router(ModulesState {
+        store: std::sync::Arc::new(SqlRowNotFoundStore),
     });
 
     let resp = app

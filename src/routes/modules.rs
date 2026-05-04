@@ -9,7 +9,7 @@ use axum::Router;
 
 use crate::persistence::ReleasesStore;
 use crate::routes::dto::modules::{Module as ModuleDto, ModulesQuery};
-use crate::routes::render;
+use crate::routes::{map_store_error, render};
 
 #[derive(Clone)]
 pub struct ModulesState {
@@ -33,7 +33,7 @@ async fn list_modules(
         .store
         .list_modules(name_filter)
         .await
-        .map_err(|_| StatusCode::BAD_GATEWAY)?;
+        .map_err(|e| map_store_error("/sls/modules", e))?;
 
     if accepts_html(&headers) {
         Ok((

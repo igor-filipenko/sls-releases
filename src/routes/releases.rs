@@ -11,7 +11,7 @@ use axum::Router;
 use crate::domain::release::{ModuleRelease, Release};
 use crate::persistence::{Include, ReleasesStore};
 use crate::routes::dto::releases::{ReleaseRow, ReleasesQuery};
-use crate::routes::render;
+use crate::routes::{map_store_error, render};
 
 #[derive(Clone)]
 pub struct ReleasesState {
@@ -40,7 +40,7 @@ async fn list_latest(
         .store
         .get_all_releases(&include)
         .await
-        .map_err(|_| StatusCode::BAD_GATEWAY)?;
+        .map_err(|e| map_store_error("/sls/releases", e))?;
 
     let mut by_name: BTreeMap<String, Release> = BTreeMap::new();
     for r in all {
@@ -92,7 +92,7 @@ async fn list_module(
         .store
         .get_releases_by_name(&module, &include)
         .await
-        .map_err(|_| StatusCode::BAD_GATEWAY)?;
+        .map_err(|e| map_store_error("/sls/releases/{module}", e))?;
 
     let mut releases = all;
     releases.sort_by(|a, b| b.version.cmp(&a.version));

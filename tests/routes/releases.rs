@@ -346,7 +346,7 @@ async fn releases_list_accept_header_html_wins_over_json() {
 }
 
 #[tokio::test]
-async fn releases_list_store_error_maps_to_502() {
+async fn releases_list_persistence_invalid_version_returns_500() {
     let app = routes::releases::router(ReleasesState {
         store: std::sync::Arc::new(AlwaysFailingStore),
     });
@@ -355,6 +355,72 @@ async fn releases_list_store_error_maps_to_502() {
         .oneshot(
             Request::builder()
                 .uri("/sls/releases")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(resp.status(), StatusCode::INTERNAL_SERVER_ERROR);
+}
+
+struct SqlRowNotFoundStore;
+
+#[async_trait]
+impl ReleasesStore for SqlRowNotFoundStore {
+    async fn get_all_releases(&self, _include: &Include) -> Result<Vec<Release>, PersistenceError> {
+        Err(PersistenceError::Sql(sqlx::Error::RowNotFound))
+    }
+
+    async fn get_releases_by_name(
+        &self,
+        _name: &str,
+        _include: &Include,
+    ) -> Result<Vec<Release>, PersistenceError> {
+        Err(PersistenceError::Sql(sqlx::Error::RowNotFound))
+    }
+
+    async fn replace_all_releases(&self, _releases: Vec<Release>) -> Result<(), PersistenceError> {
+        Ok(())
+    }
+
+    async fn list_modules(
+        &self,
+        _name: Option<&str>,
+    ) -> Result<Vec<sls_releases::domain::module::Module>, PersistenceError> {
+        Ok(vec![])
+    }
+}
+
+#[tokio::test]
+async fn releases_list_persistence_sql_error_returns_502() {
+    let app = routes::releases::router(ReleasesState {
+        store: std::sync::Arc::new(SqlRowNotFoundStore),
+    });
+
+    let resp = app
+        .oneshot(
+            Request::builder()
+                .uri("/sls/releases")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(resp.status(), StatusCode::BAD_GATEWAY);
+}
+
+#[tokio::test]
+async fn releases_module_persistence_sql_error_returns_502() {
+    let app = routes::releases::router(ReleasesState {
+        store: std::sync::Arc::new(SqlRowNotFoundStore),
+    });
+
+    let resp = app
+        .oneshot(
+            Request::builder()
+                .uri("/sls/releases/foo")
                 .body(Body::empty())
                 .unwrap(),
         )
