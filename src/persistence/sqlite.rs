@@ -5,8 +5,8 @@ use crate::domain::release::{Release, ReleaseKind};
 use crate::persistence::{
     Include, PersistenceError, version_from_row, version_kind_db_str, version_parts,
 };
-use sqlx::Row;
-use sqlx::sqlite::{SqliteConnectOptions, SqlitePool, SqlitePoolOptions};
+use sqlx::{Row, Sqlite};
+use sqlx::sqlite::{SqliteConnectOptions, SqlitePool, SqlitePoolOptions, SqliteRow};
 use tracing::log;
 
 #[derive(Clone)]
@@ -51,13 +51,8 @@ impl SqliteReleasesStore {
     pub async fn load_module_localizations(
         &self,
     ) -> Result<HashMap<String, String>, PersistenceError> {
-        let rows = sqlx::query("SELECT name, localized_name FROM modules")
-            .fetch_all(&self.pool)
-            .await?;
-        let mut map = HashMap::with_capacity(rows.len());
-        for row in rows {
-            map.insert(row.try_get("name")?, row.try_get("localized_name")?);
-        }
+        let modules = get_modules(&self.pool, None).await?;
+        let map = modules.into_iter().map(|m| (m.name, m.localized_name)).collect();
         Ok(map)
     }
 
@@ -65,30 +60,7 @@ impl SqliteReleasesStore {
         &self,
         name: Option<&str>,
     ) -> Result<Vec<Module>, PersistenceError> {
-        let rows = match name {
-            Some(n) => {
-                sqlx::query(
-                    "SELECT name, localized_name FROM modules WHERE name = ? ORDER BY name ASC",
-                )
-                .bind(n)
-                .fetch_all(&self.pool)
-                .await?
-            }
-            None => {
-                sqlx::query("SELECT name, localized_name FROM modules ORDER BY name ASC")
-                    .fetch_all(&self.pool)
-                    .await?
-            }
-        };
-
-        let mut out = Vec::with_capacity(rows.len());
-        for row in rows {
-            out.push(Module {
-                name: row.try_get("name")?,
-                localized_name: row.try_get("localized_name")?,
-            });
-        }
-        Ok(out)
+        get_modules(&self.pool, name).await
     }
 
     pub async fn get_all_releases(
@@ -98,7 +70,9 @@ impl SqliteReleasesStore {
         let mut sql = String::from(
             r#"SELECT r.name, m.localized_name, r.url, r.date_time, r.version_kind, r.major, r.minor, r.patch, r.rc_number, r.closed
                FROM releases r
-               INNER JOIN modules m ON m.name = r.name"#,
+               INNER JOIN modules m ON m.name = r.name
+               WHERE NOT r.closed
+            "#,
         );
         let mut filters = Vec::new();
         if !include.candidates {
@@ -108,43 +82,17 @@ impl SqliteReleasesStore {
             filters.push("r.version_kind != 'milestone'");
         }
         if !filters.is_empty() {
-            sql.push_str(" WHERE ");
+            sql.push_str(" AND ");
             sql.push_str(&filters.join(" AND "));
         }
         sql.push_str(" ORDER BY r.name ASC");
+        log::debug!("get_all_releases, sql: {}", sql);
 
-        let rows = sqlx::query(&sql).fetch_all(&self.pool).await?;
-
-        let mut out = Vec::with_capacity(rows.len());
-        for row in rows {
-            let kind: String = row.try_get("version_kind")?;
-            let kind_enum = match kind.as_str() {
-                "milestone" => ReleaseKind::Milestone,
-                "production" | "release" => ReleaseKind::Production,
-                "candidate" => ReleaseKind::Candidate,
-                other => return Err(PersistenceError::InvalidVersionKind(other.to_string())),
-            };
-            let major: i32 = row.try_get("major")?;
-            let minor: i32 = row.try_get("minor")?;
-            let patch: i32 = row.try_get("patch")?;
-            let rc_raw: i32 = row.try_get("rc_number")?;
-            let rc = (rc_raw >= 0).then_some(rc_raw);
-            let version = version_from_row(&kind, major, minor, patch, rc)?;
-            let mut closed: bool = row.try_get("closed")?;
-            if kind_enum != ReleaseKind::Milestone {
-                closed = false;
-            }
-            out.push(Release {
-                name: row.try_get("name")?,
-                localized_name: row.try_get("localized_name")?,
-                kind: kind_enum,
-                version,
-                url: row.try_get("url")?,
-                date_time: row.try_get("date_time")?,
-                closed,
-            });
-        }
-        Ok(out)
+        let rows = sqlx::query(&sql)
+            .fetch_all(&self.pool)
+            .await?;
+        let releases = rows_to_releases(&rows)?;
+        Ok(releases)
     }
 
     pub async fn get_releases_by_name(
@@ -156,7 +104,9 @@ impl SqliteReleasesStore {
             r#"SELECT r.name, m.localized_name, r.url, r.date_time, r.version_kind, r.major, r.minor, r.patch, r.rc_number, r.closed
                FROM releases r
                INNER JOIN modules m ON m.name = r.name
-               WHERE r.name = ?"#,
+               WHERE r.name = ?
+                 AND NOT r.closed
+            "#,
         );
         if !include.candidates {
             sql.push_str(" AND r.version_kind != 'candidate'");
@@ -165,39 +115,15 @@ impl SqliteReleasesStore {
             sql.push_str(" AND r.version_kind != 'milestone'");
         }
         sql.push_str(" ORDER BY r.major ASC, r.minor ASC, r.patch ASC, r.date_time ASC");
+        log::debug!("get_releases_by_name, sql: {}", sql);
 
-        let rows = sqlx::query(&sql).bind(name).fetch_all(&self.pool).await?;
+        let rows = sqlx::query(&sql)
+            .bind(name)
+            .fetch_all(&self.pool)
+            .await?;
 
-        let mut out = Vec::with_capacity(rows.len());
-        for row in rows {
-            let kind: String = row.try_get("version_kind")?;
-            let kind_enum = match kind.as_str() {
-                "milestone" => ReleaseKind::Milestone,
-                "production" | "release" => ReleaseKind::Production,
-                "candidate" => ReleaseKind::Candidate,
-                other => return Err(PersistenceError::InvalidVersionKind(other.to_string())),
-            };
-            let major: i32 = row.try_get("major")?;
-            let minor: i32 = row.try_get("minor")?;
-            let patch: i32 = row.try_get("patch")?;
-            let rc_raw: i32 = row.try_get("rc_number")?;
-            let rc = (rc_raw >= 0).then_some(rc_raw);
-            let version = version_from_row(&kind, major, minor, patch, rc)?;
-            let mut closed: bool = row.try_get("closed")?;
-            if kind_enum != ReleaseKind::Milestone {
-                closed = false;
-            }
-            out.push(Release {
-                name: row.try_get("name")?,
-                localized_name: row.try_get("localized_name")?,
-                kind: kind_enum,
-                version,
-                url: row.try_get("url")?,
-                date_time: row.try_get("date_time")?,
-                closed,
-            });
-        }
-        Ok(out)
+        let releases = rows_to_releases(&rows)?;
+        Ok(releases)    
     }
 
     pub async fn replace_all_releases(
@@ -206,23 +132,10 @@ impl SqliteReleasesStore {
     ) -> Result<(), PersistenceError> {
         let mut tx = self.pool.begin().await?;
 
-        let module_names: Vec<String> = sqlx::query_scalar("SELECT name FROM modules")
-            .fetch_all(&mut *tx)
-            .await?;
-        let known: HashSet<String> = module_names.into_iter().collect();
+        let modules = get_modules( &mut *tx, None).await?;
+        let known: HashSet<String> = modules.into_iter().map(|m| m.name).collect();
 
-        let mut processed = 0usize;
-        let mut changed = 0usize;
-        for r in releases {
-            if !known.contains(&r.name) {
-                continue;
-            }
-
-            let (kind, major, minor, patch, rc) = version_parts(&r);
-            let kind = version_kind_db_str(kind);
-            let closed = matches!(r.kind, ReleaseKind::Milestone) && r.closed;
-            let result = sqlx::query(
-                r#"INSERT INTO releases
+        let sql = r#"INSERT INTO releases
                    (name, url, date_time, version_kind, major, minor, patch, rc_number, closed)
                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
                    ON CONFLICT(name, version_kind, major, minor, patch, rc_number) DO UPDATE SET
@@ -231,19 +144,30 @@ impl SqliteReleasesStore {
                      closed = excluded.closed
                    WHERE releases.url != excluded.url
                       OR releases.date_time != excluded.date_time
-                      OR releases.closed != excluded.closed"#,
-            )
-            .bind(&r.name)
-            .bind(&r.url)
-            .bind(&r.date_time)
-            .bind(kind)
-            .bind(major)
-            .bind(minor)
-            .bind(patch)
-            .bind(rc.unwrap_or(-1))
-            .bind(closed)
-            .execute(&mut *tx)
-            .await?;
+                      OR releases.closed != excluded.closed"#;
+        let mut processed = 0usize;
+        let mut changed = 0usize;
+        for r in releases {
+            if !known.contains(&r.name) {
+                log::trace!("skipping unknown module: {}", r.name);
+                continue;
+            }
+
+            let (kind, major, minor, patch, rc) = version_parts(&r);
+            let kind = version_kind_db_str(kind);
+            let closed = matches!(r.kind, ReleaseKind::Milestone) && r.closed;
+            let result = sqlx::query(sql)
+                .bind(&r.name)
+                .bind(&r.url)
+                .bind(&r.date_time)
+                .bind(kind)
+                .bind(major)
+                .bind(minor)
+                .bind(patch)
+                .bind(rc.unwrap_or(-1))
+                .bind(closed)
+                .execute(&mut *tx)
+                .await?;
             processed += 1;
             if result.rows_affected() > 0 {
                 changed += 1;
@@ -254,4 +178,74 @@ impl SqliteReleasesStore {
         log::info!("Processed {} releases, changed {} releases", processed, changed);
         Ok(())
     }
+}
+
+fn rows_to_releases(rows: &Vec<SqliteRow>) -> Result<Vec<Release>, PersistenceError> {
+    let mut out = Vec::with_capacity(rows.len());
+    for row in rows {
+        let rel = row_to_release(row)?;
+        out.push(rel);
+    }
+    Ok(out)
+}
+
+async fn get_modules<'e, E>(executor: E, name: Option<&str>) -> Result<Vec<Module>, PersistenceError>
+where E: sqlx::Executor<'e, Database = Sqlite> {
+    let rows = match name {
+        Some(n) => {
+            let sql = "SELECT name, localized_name FROM modules WHERE name = ? ORDER BY name ASC";
+            log::debug!("get_modules, sql: {}", sql);
+            sqlx::query(sql)
+                .bind(n) 
+                .fetch_all(executor)
+                .await?
+        }
+        None => {
+            let sql = "SELECT name, localized_name FROM modules ORDER BY name ASC";
+            log::debug!("get_modules, sql: {}", sql);
+            sqlx::query(sql)
+                .fetch_all(executor)
+                .await?
+        }
+    };
+
+    let mut out = Vec::with_capacity(rows.len());
+    for row in rows {
+        out.push(Module {
+            name: row.try_get("name")?,
+            localized_name: row.try_get("localized_name")?,
+        });
+    }
+    log::debug!("get_modules, out: {:?}", out.len());
+    Ok(out)
+}
+
+fn row_to_release(row: &SqliteRow) -> Result<Release, PersistenceError> {
+    let kind: String = row.try_get("version_kind")?;
+    let kind_enum = match kind.as_str() {
+        "milestone" => ReleaseKind::Milestone,
+        "production" | "release" => ReleaseKind::Production,
+        "candidate" => ReleaseKind::Candidate,
+        other => return Err(PersistenceError::InvalidVersionKind(other.to_string())),
+    };
+    let major: i32 = row.try_get("major")?;
+    let minor: i32 = row.try_get("minor")?;
+    let patch: i32 = row.try_get("patch")?;
+    let rc_raw: i32 = row.try_get("rc_number")?;
+    let rc = (rc_raw >= 0).then_some(rc_raw);
+    let version = version_from_row(&kind, major, minor, patch, rc)?;
+    let mut closed: bool = row.try_get("closed")?;
+    if kind_enum != ReleaseKind::Milestone {
+        closed = false;
+    }
+
+    Ok(Release {
+        name: row.try_get("name")?,
+        localized_name: row.try_get("localized_name")?,
+        kind: kind_enum,
+        version,
+        url: row.try_get("url")?,
+        date_time: row.try_get("date_time")?,
+        closed,
+    })
 }

@@ -64,7 +64,7 @@ async fn sync_once_mock_github_writes_sqlite() {
         0,
         json!([
             {"title":"a-v1.2.0","html_url":"https://example/m/a120","created_at":"2026-02-01T00:00:00Z","state":"open"},
-            {"title":"b-v9.9.9","html_url":"https://example/m/b999","created_at":"2026-02-02T00:00:00Z","state":"closed"}
+            {"title":"b-v9.9.9","html_url":"https://example/m/b999","created_at":"2026-02-02T00:00:00Z","state":"open"}
         ]),
         200,
     )
@@ -170,5 +170,5 @@ async fn sync_once_mock_github_writes_sqlite() {
         }
     );
     assert!(!b_ms.date_time.is_empty());
-    assert!(b_ms.closed);
+    assert!(!b_ms.closed);
 }
