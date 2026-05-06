@@ -9,10 +9,19 @@ const apiTarget = process.env.VITE_API_PROXY ?? "http://127.0.0.1:8080";
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react(), tailwindcss()],
+  esbuild: {
+    jsx: "automatic",
+  },
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
     },
+  },
+  test: {
+    environment: "jsdom",
+    setupFiles: "./tests/setup.ts",
+    globals: true,
+    css: true,
   },
   server: {
     proxy: {

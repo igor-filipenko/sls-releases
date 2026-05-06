@@ -9,8 +9,11 @@
     "lint": "eslint .",
     "format": "prettier . --write",
     "format:check": "prettier . --check",
-    "test": "bun test",
-    "verify": "bun run build && bun run lint && bun run format:check",
+    "test": "vitest",
+    "test:watch": "vitest --watch",
+    "test:ui": "vitest --ui",
+    "typecheck:test": "tsc -p tsconfig.test.json --noEmit",
+    "verify": "tsc -p tsconfig.test.json && eslint . && vitest run && prettier . --check",
     "preview": "vite preview"
   },
   "dependencies": {
@@ -27,20 +30,26 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.39.4",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.0",
+    "@testing-library/user-event": "^14.6.1",
     "@types/node": "^25.6.0",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^6.0.1",
+    "@vitest/ui": "^3.2.4",
     "eslint": "^9.39.4",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-react-hooks": "^7.0.1",
     "eslint-plugin-react-refresh": "^0.5.2",
     "globals": "^17.4.0",
+    "jsdom": "^27.0.0",
     "prettier": "^3.6.2",
     "shadcn": "^4.2.0",
     "tailwindcss-animate": "^1.0.7",
     "typescript": "~6.0.2",
     "typescript-eslint": "^8.58.0",
-    "vite": "^8.0.4"
+    "vite": "^8.0.4",
+    "vitest": "^3.2.4"
   }
 }
