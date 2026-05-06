@@ -1,7 +1,7 @@
 //! Types for the transactions HTTP handler.
 
 use chrono::NaiveDateTime;
-use serde::{Serialize};
+use serde::Serialize;
 
 #[derive(Debug, Serialize)]
 pub struct Transaction {

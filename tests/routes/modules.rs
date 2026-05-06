@@ -197,7 +197,10 @@ async fn modules_list_persistence_invalid_version_returns_500() {
 
     let resp = app
         .oneshot(
-            Request::builder().uri("/sls/modules").body(Body::empty()).unwrap(),
+            Request::builder()
+                .uri("/sls/modules")
+                .body(Body::empty())
+                .unwrap(),
         )
         .await
         .unwrap();
@@ -251,7 +254,10 @@ async fn modules_list_persistence_sql_error_returns_502() {
 
     let resp = app
         .oneshot(
-            Request::builder().uri("/sls/modules").body(Body::empty()).unwrap(),
+            Request::builder()
+                .uri("/sls/modules")
+                .body(Body::empty())
+                .unwrap(),
         )
         .await
         .unwrap();

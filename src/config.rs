@@ -357,7 +357,7 @@ interval_secs = 60
             let cfg = load_config(&cli).expect("load_config");
 
             assert!(cfg.web_path.is_some(), "expected web path");
-        });   
+        });
     }
 
     #[test]
@@ -380,5 +380,4 @@ interval_secs = 60
             assert!(matches!(result.err(), Some(ConfigError::MissingWebPath)));
         });
     }
-
 }

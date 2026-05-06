@@ -1,12 +1,12 @@
 use std::collections::BTreeMap;
 use std::sync::Arc;
 
+use axum::Router;
 use axum::extract::{Path, Query, State};
 use axum::http::{HeaderMap, StatusCode, Uri};
 use axum::response::Json;
 use axum::response::{IntoResponse, Response};
 use axum::routing::get;
-use axum::Router;
 
 use crate::domain::release::{ModuleRelease, Release};
 use crate::persistence::{Include, ReleasesStore};
@@ -114,7 +114,8 @@ async fn list_module(
             StatusCode::OK,
             [("content-type", "text/plain; charset=utf-8")],
             render::module_releases_csv(&module_views),
-        ).into_response())
+        )
+            .into_response())
     }
 }
 

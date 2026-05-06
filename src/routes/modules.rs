@@ -1,11 +1,11 @@
 use std::sync::Arc;
 
+use axum::Router;
 use axum::extract::{Query, State};
 use axum::http::{HeaderMap, StatusCode};
 use axum::response::Json;
 use axum::response::{IntoResponse, Response};
 use axum::routing::get;
-use axum::Router;
 
 use crate::persistence::ReleasesStore;
 use crate::routes::dto::modules::{Module as ModuleDto, ModulesQuery};

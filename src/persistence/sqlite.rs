@@ -5,8 +5,8 @@ use crate::domain::release::{Release, ReleaseKind};
 use crate::persistence::{
     Include, PersistenceError, version_from_row, version_kind_db_str, version_parts,
 };
-use sqlx::{Row, Sqlite};
 use sqlx::sqlite::{SqliteConnectOptions, SqlitePool, SqlitePoolOptions, SqliteRow};
+use sqlx::{Row, Sqlite};
 use tracing::log;
 
 #[derive(Clone)]
@@ -48,10 +48,7 @@ impl SqliteReleasesStore {
         &self.pool
     }
 
-    pub async fn list_modules(
-        &self,
-        name: Option<&str>,
-    ) -> Result<Vec<Module>, PersistenceError> {
+    pub async fn list_modules(&self, name: Option<&str>) -> Result<Vec<Module>, PersistenceError> {
         get_modules(&self.pool, name).await
     }
 
@@ -80,9 +77,7 @@ impl SqliteReleasesStore {
         sql.push_str(" ORDER BY r.name ASC");
         log::debug!("get_all_releases, sql: {}", sql);
 
-        let rows = sqlx::query(&sql)
-            .fetch_all(&self.pool)
-            .await?;
+        let rows = sqlx::query(&sql).fetch_all(&self.pool).await?;
         let releases = rows_to_releases(&rows)?;
         Ok(releases)
     }
@@ -109,13 +104,10 @@ impl SqliteReleasesStore {
         sql.push_str(" ORDER BY r.major ASC, r.minor ASC, r.patch ASC, r.date_time ASC");
         log::debug!("get_releases_by_name, sql: {}", sql);
 
-        let rows = sqlx::query(&sql)
-            .bind(name)
-            .fetch_all(&self.pool)
-            .await?;
+        let rows = sqlx::query(&sql).bind(name).fetch_all(&self.pool).await?;
 
         let releases = rows_to_releases(&rows)?;
-        Ok(releases)    
+        Ok(releases)
     }
 
     pub async fn replace_all_releases(
@@ -124,7 +116,7 @@ impl SqliteReleasesStore {
     ) -> Result<(), PersistenceError> {
         let mut tx = self.pool.begin().await?;
 
-        let modules = get_modules( &mut *tx, None).await?;
+        let modules = get_modules(&mut *tx, None).await?;
         let known: HashSet<String> = modules.into_iter().map(|m| m.name).collect();
 
         let sql = r#"INSERT INTO releases
@@ -167,7 +159,11 @@ impl SqliteReleasesStore {
         }
 
         tx.commit().await?;
-        log::info!("Processed {} releases, changed {} releases", processed, changed);
+        log::info!(
+            "Processed {} releases, changed {} releases",
+            processed,
+            changed
+        );
         Ok(())
     }
 }
@@ -181,23 +177,23 @@ fn rows_to_releases(rows: &Vec<SqliteRow>) -> Result<Vec<Release>, PersistenceEr
     Ok(out)
 }
 
-async fn get_modules<'e, E>(executor: E, name: Option<&str>) -> Result<Vec<Module>, PersistenceError>
-where E: sqlx::Executor<'e, Database = Sqlite> {
+async fn get_modules<'e, E>(
+    executor: E,
+    name: Option<&str>,
+) -> Result<Vec<Module>, PersistenceError>
+where
+    E: sqlx::Executor<'e, Database = Sqlite>,
+{
     let rows = match name {
         Some(n) => {
             let sql = "SELECT name, localized_name FROM modules WHERE name = ? ORDER BY name ASC";
             log::debug!("get_modules, sql: {}", sql);
-            sqlx::query(sql)
-                .bind(n) 
-                .fetch_all(executor)
-                .await?
+            sqlx::query(sql).bind(n).fetch_all(executor).await?
         }
         None => {
             let sql = "SELECT name, localized_name FROM modules ORDER BY name ASC";
             log::debug!("get_modules, sql: {}", sql);
-            sqlx::query(sql)
-                .fetch_all(executor)
-                .await?
+            sqlx::query(sql).fetch_all(executor).await?
         }
     };
 

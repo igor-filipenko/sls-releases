@@ -14,9 +14,9 @@ pub(crate) fn map_store_error(route: &'static str, err: PersistenceError) -> Sta
     let status = match &err {
         PersistenceError::InvalidVersionKind(_) => StatusCode::INTERNAL_SERVER_ERROR,
         PersistenceError::Sql(e) => match e {
-            sqlx::Error::PoolTimedOut
-            | sqlx::Error::PoolClosed
-            | sqlx::Error::WorkerCrashed => StatusCode::SERVICE_UNAVAILABLE,
+            sqlx::Error::PoolTimedOut | sqlx::Error::PoolClosed | sqlx::Error::WorkerCrashed => {
+                StatusCode::SERVICE_UNAVAILABLE
+            }
             _ => StatusCode::BAD_GATEWAY,
         },
     };

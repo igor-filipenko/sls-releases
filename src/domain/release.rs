@@ -121,4 +121,3 @@ pub struct ModuleRelease {
     pub url: String,
     pub date_time: String,
 }
-

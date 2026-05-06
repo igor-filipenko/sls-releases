@@ -95,9 +95,11 @@ async fn main() -> anyhow::Result<()> {
 
     #[cfg(feature = "embedded-web")]
     if let Some(_) = web_root {
-        Err(anyhow::anyhow!("web path is not supported when embedded-web feature is enabled"))?;
+        Err(anyhow::anyhow!(
+            "web path is not supported when embedded-web feature is enabled"
+        ))?;
     }
-    
+
     #[cfg(feature = "embedded-web")]
     let app = app.fallback(axum::routing::get(routes::web::fallback));
 

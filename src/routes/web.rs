@@ -7,7 +7,7 @@ use std::path::{Path, PathBuf};
 #[cfg(not(feature = "embedded-web"))]
 use axum::body::Body;
 #[cfg(not(feature = "embedded-web"))]
-use axum::http::{header, HeaderValue, StatusCode, Uri};
+use axum::http::{HeaderValue, StatusCode, Uri, header};
 #[cfg(not(feature = "embedded-web"))]
 use axum::response::{IntoResponse, Response};
 
@@ -33,7 +33,7 @@ pub async fn fallback(uri: Uri, web_root: Option<PathBuf>) -> impl IntoResponse 
     if !path.contains('.') {
         return serve_path(root, "index.html").await;
     }
-    
+
     StatusCode::NOT_FOUND.into_response()
 }
 
@@ -74,11 +74,11 @@ fn response_for_file(path: &str, bytes: Vec<u8>) -> Response<Body> {
 
 #[cfg(feature = "embedded-web")]
 mod embedded {
-    use tracing::log;
     use axum::body::Body;
-    use axum::http::{header, HeaderValue, Response, StatusCode, Uri};
+    use axum::http::{HeaderValue, Response, StatusCode, Uri, header};
     use axum::response::IntoResponse;
     use rust_embed::RustEmbed;
+    use tracing::log;
 
     #[derive(RustEmbed)]
     #[folder = "web/dist"]
@@ -148,4 +148,3 @@ mod embedded {
 
 #[cfg(feature = "embedded-web")]
 pub use embedded::fallback;
-

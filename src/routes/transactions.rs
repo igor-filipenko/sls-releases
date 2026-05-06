@@ -1,10 +1,10 @@
+use crate::routes::dto::transactions::Transaction;
 use axum::extract::{Path, State};
 use axum::http::StatusCode;
 use axum::response::IntoResponse;
 use axum::routing::get;
 use axum::{Json, Router};
 use chrono::{DateTime, FixedOffset, Utc};
-use crate::routes::dto::transactions::Transaction;
 
 #[derive(Clone)]
 pub struct TransactionsState {
