@@ -2,7 +2,6 @@ import { ExternalLink, ListFilter, Package, RefreshCw } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -23,8 +22,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { VersionLabel } from "@/components/ui/version";
 import { fetchReleases, type ReleaseRow } from "@/lib/api";
-import { isMilestoneVersion, isRcVersion } from "@/lib/utils";
 
 export function ReleasesPage() {
   const [includeRc, setIncludeRc] = useState(false);
@@ -186,16 +185,7 @@ export function ReleasesPage() {
                     </TableCell>
                     <TableCell className="text-muted-foreground">{r.localizedName}</TableCell>
                     <TableCell>
-                      <div className="flex items-center gap-2">
-                        <span className="font-mono text-sm tabular-nums">{r.version}</span>
-                        {isRcVersion(r.kind) ? (
-                          <Badge className="bg-yellow-700 text-black">RC</Badge>
-                        ) : isMilestoneVersion(r.kind) ? (
-                          <Badge className="bg-blue-700 text-white">Milestone</Badge>
-                        ) : (
-                          <Badge className="bg-green-700 text-white">Production</Badge>
-                        )}
-                      </div>
+                      <VersionLabel release={r} />
                     </TableCell>
                     <TableCell className="text-muted-foreground">{r.dateTime}</TableCell>
                     <TableCell className="text-right">
