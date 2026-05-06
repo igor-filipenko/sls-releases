@@ -206,10 +206,7 @@ fn validate_web_path(path: &Option<String>) -> Result<Option<String>, ConfigErro
 }
 
 fn default_user_agent() -> String {
-    format!(
-        "{}",
-        DEFAULT_USER_AGENT_TEMPLATE.replace("{}", env!("CARGO_PKG_VERSION"))
-    )
+    DEFAULT_USER_AGENT_TEMPLATE.replace("{}", env!("CARGO_PKG_VERSION")).to_string()
 }
 
 const fn default_port() -> u16 {

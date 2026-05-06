@@ -21,7 +21,7 @@ async fn get_transaction(
     State(state): State<TransactionsState>,
     Path(id): Path<String>,
 ) -> impl IntoResponse {
-    match decode_array(&id).and_then(|parts| parts.get(0).copied().zip(parts.get(1).copied())) {
+    match decode_array(&id).and_then(|parts| parts.first().copied().zip(parts.get(1).copied())) {
         Some((internal_id, seconds)) => {
             let dt_utc: DateTime<Utc> = match DateTime::<Utc>::from_timestamp(seconds, 0) {
                 Some(dt) => dt,
@@ -55,7 +55,7 @@ async fn get_transaction(
 }
 
 fn decode_array(input: &str) -> Option<Vec<i64>> {
-    if input.len() % 11 != 0 {
+    if !input.len().is_multiple_of(11) {
         return None;
     }
     let mut out = Vec::with_capacity(input.len() / 11);
