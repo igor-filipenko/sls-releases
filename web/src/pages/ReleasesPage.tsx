@@ -4,13 +4,7 @@ import { Link } from "react-router-dom";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   Popover,
@@ -60,12 +54,8 @@ export function ReleasesPage() {
     <div className="space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="space-y-1">
-          <h1 className="text-3xl font-semibold tracking-tight text-foreground">
-            SL releases
-          </h1>
-          <p className="text-muted-foreground">
-            Latest module versions from GitHub.
-          </p>
+          <h1 className="text-3xl font-semibold tracking-tight text-foreground">SL releases</h1>
+          <p className="text-muted-foreground">Latest module versions from GitHub.</p>
         </div>
       </div>
 
@@ -77,8 +67,7 @@ export function ReleasesPage() {
               <div>
                 <CardTitle>Modules</CardTitle>
                 <CardDescription>
-                  Sorted by module name. Version reflects the newest matching tag
-                  per module.
+                  Sorted by module name. Version reflects the newest matching tag per module.
                 </CardDescription>
               </div>
             </div>
@@ -107,7 +96,7 @@ export function ReleasesPage() {
                   >
                     <ListFilter className="size-4 shrink-0" aria-hidden />
                     Release types
-                    {(includeRc || includeMilestones) ? (
+                    {includeRc || includeMilestones ? (
                       <span className="rounded-sm bg-muted px-1.5 py-0.5 text-xs font-normal text-muted-foreground tabular-nums">
                         {[includeRc, includeMilestones].filter(Boolean).length}
                       </span>
@@ -118,9 +107,8 @@ export function ReleasesPage() {
                   <PopoverHeader>
                     <PopoverTitle>Release types</PopoverTitle>
                     <PopoverDescription>
-                      Production tags are always considered. Turn on options below to
-                      include pre-releases when resolving the newest version per
-                      module.
+                      Production tags are always considered. Turn on options below to include
+                      pre-releases when resolving the newest version per module.
                     </PopoverDescription>
                   </PopoverHeader>
                   <div className="flex flex-col gap-3 pt-2">
@@ -173,9 +161,7 @@ export function ReleasesPage() {
               ))}
             </div>
           ) : rows.length === 0 ? (
-            <p className="p-6 text-sm text-muted-foreground">
-              No releases returned.
-            </p>
+            <p className="p-6 text-sm text-muted-foreground">No releases returned.</p>
           ) : (
             <Table>
               <TableHeader>
@@ -198,28 +184,20 @@ export function ReleasesPage() {
                         {r.name}
                       </Link>
                     </TableCell>
-                    <TableCell className="text-muted-foreground">
-                      {r.localizedName}
-                    </TableCell>
+                    <TableCell className="text-muted-foreground">{r.localizedName}</TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2">
-                        <span className="font-mono text-sm tabular-nums">
-                          {r.version}
-                        </span>
+                        <span className="font-mono text-sm tabular-nums">{r.version}</span>
                         {isRcVersion(r.kind) ? (
                           <Badge className="bg-yellow-700 text-black">RC</Badge>
                         ) : isMilestoneVersion(r.kind) ? (
-                          <Badge className="bg-blue-700 text-white">
-                            Milestone
-                          </Badge>
+                          <Badge className="bg-blue-700 text-white">Milestone</Badge>
                         ) : (
                           <Badge className="bg-green-700 text-white">Production</Badge>
                         )}
                       </div>
                     </TableCell>
-                    <TableCell className="text-muted-foreground">
-                      {r.dateTime}
-                    </TableCell>
+                    <TableCell className="text-muted-foreground">{r.dateTime}</TableCell>
                     <TableCell className="text-right">
                       <Button variant="ghost" size="sm" asChild>
                         <a

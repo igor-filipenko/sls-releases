@@ -3,13 +3,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   Popover,
@@ -38,7 +32,7 @@ export function ModulePage() {
 
   const [includeRc, setIncludeRc] = useState(false);
   const [includeMilestones, setIncludeMilestones] = useState(false);
-  const [module, setModule] = useState<Module>({name: "", localizedName: ""});
+  const [module, setModule] = useState<Module>({ name: "", localizedName: "" });
   const [rows, setRows] = useState<ReleaseRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -63,9 +57,7 @@ export function ModulePage() {
   }, [load]);
 
   if (!moduleName) {
-    return (
-      <p className="text-sm text-muted-foreground">Module not specified.</p>
-    );
+    return <p className="text-sm text-muted-foreground">Module not specified.</p>;
   }
 
   return (
@@ -124,7 +116,7 @@ export function ModulePage() {
                   >
                     <ListFilter className="size-4 shrink-0" aria-hidden />
                     Release types
-                    {(includeRc || includeMilestones) ? (
+                    {includeRc || includeMilestones ? (
                       <span className="rounded-sm bg-muted px-1.5 py-0.5 text-xs font-normal text-muted-foreground tabular-nums">
                         {[includeRc, includeMilestones].filter(Boolean).length}
                       </span>
@@ -135,8 +127,8 @@ export function ModulePage() {
                   <PopoverHeader>
                     <PopoverTitle>Release types</PopoverTitle>
                     <PopoverDescription>
-                      Production tags are always considered. Turn on options below to
-                      include pre-releases in this module&apos;s release history.
+                      Production tags are always considered. Turn on options below to include
+                      pre-releases in this module&apos;s release history.
                     </PopoverDescription>
                   </PopoverHeader>
                   <div className="flex flex-col gap-3 pt-2">
@@ -206,23 +198,17 @@ export function ModulePage() {
                   <TableRow key={`${r.version}-${r.url}`}>
                     <TableCell className="font-mono text-sm tabular-nums">
                       <div className="flex items-center gap-2">
-                        <span className="font-mono text-sm tabular-nums">
-                          {r.version}
-                        </span>
+                        <span className="font-mono text-sm tabular-nums">{r.version}</span>
                         {isRcVersion(r.kind) ? (
                           <Badge className="bg-yellow-700 text-black">RC</Badge>
                         ) : isMilestoneVersion(r.kind) ? (
-                          <Badge className="bg-blue-700 text-white">
-                            Milestone
-                          </Badge> 
+                          <Badge className="bg-blue-700 text-white">Milestone</Badge>
                         ) : (
                           <Badge className="bg-green-700 text-white">Production</Badge>
                         )}
                       </div>
                     </TableCell>
-                    <TableCell className="text-muted-foreground">
-                      {r.dateTime}
-                    </TableCell>
+                    <TableCell className="text-muted-foreground">{r.dateTime}</TableCell>
                     <TableCell className="text-right">
                       <Button variant="ghost" size="sm" asChild>
                         <a

@@ -18,7 +18,7 @@ function versionToString(v: VersionJson): string {
 export type Module = {
   name: string;
   localizedName: string;
-}
+};
 
 export type ReleaseRow = {
   name: string;
@@ -43,16 +43,11 @@ type ReleaseJson = {
   date_time: string;
 };
 
-export function buildModulesPath(
-  name?: string
-): string {
+export function buildModulesPath(name?: string): string {
   return name ? `/sls/modules?name=${name}` : "/sls/modules";
 }
 
-export function buildReleasesPath(
-  includeRc: boolean,
-  includeMilestones: boolean
-): string {
+export function buildReleasesPath(includeRc: boolean, includeMilestones: boolean): string {
   const params = new URLSearchParams();
   if (includeRc) params.set("rc", "true");
   if (includeMilestones) params.set("ms", "true");
@@ -63,7 +58,7 @@ export function buildReleasesPath(
 export function buildModuleReleasesPath(
   moduleName: string,
   includeRc: boolean,
-  includeMilestones: boolean
+  includeMilestones: boolean,
 ): string {
   const enc = encodeURIComponent(moduleName);
   const params = new URLSearchParams();
@@ -79,7 +74,7 @@ export async function fetchJson<T>(path: string): Promise<T> {
     throw new Error(
       res.status === 502
         ? "Upstream service unavailable (check GitHub token and backend logs)."
-        : `Request failed (${res.status})`
+        : `Request failed (${res.status})`,
     );
   }
   return res.json() as Promise<T>;
@@ -97,11 +92,9 @@ export async function fetchModule(name: string): Promise<Module> {
 
 export async function fetchReleases(
   includeRc: boolean,
-  includeMilestones: boolean
+  includeMilestones: boolean,
 ): Promise<ReleaseRow[]> {
-  const data = await fetchJson<ReleaseJson[]>(
-    buildReleasesPath(includeRc, includeMilestones)
-  );
+  const data = await fetchJson<ReleaseJson[]>(buildReleasesPath(includeRc, includeMilestones));
   return data.map((r) => ({
     name: r.name,
     localizedName: r.localized_name,
@@ -115,10 +108,10 @@ export async function fetchReleases(
 export async function fetchModuleReleases(
   moduleName: string,
   includeRc: boolean,
-  includeMilestones: boolean
+  includeMilestones: boolean,
 ): Promise<ReleaseRow[]> {
   const data = await fetchJson<ReleaseJson[]>(
-    buildModuleReleasesPath(moduleName, includeRc, includeMilestones)
+    buildModuleReleasesPath(moduleName, includeRc, includeMilestones),
   );
   return data.map((r) => ({
     name: r.name,

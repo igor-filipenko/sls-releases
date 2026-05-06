@@ -28,11 +28,7 @@ export default function App() {
             </Link>
             <div className="flex items-center gap-2">
               <Sun className="size-4 text-muted-foreground" aria-hidden="true" />
-              <Switch
-                checked={isDark}
-                onCheckedChange={setIsDark}
-                aria-label="Toggle dark mode"
-              />
+              <Switch checked={isDark} onCheckedChange={setIsDark} aria-label="Toggle dark mode" />
               <Moon className="size-4 text-muted-foreground" aria-hidden="true" />
             </div>
           </div>
