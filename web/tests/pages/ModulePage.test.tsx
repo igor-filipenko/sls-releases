@@ -1,6 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
-import { describe, expect, test, vi } from "vitest";
+import { beforeEach, describe, expect, test, vi } from "vitest";
 
 import * as api from "@/lib/api";
 import { ModulePage } from "@/pages/ModulePage";
@@ -25,6 +25,11 @@ function renderWithRoute(path: string) {
 }
 
 describe("ModulePage", () => {
+  beforeEach(() => {
+    localStorage.clear();
+    vi.mocked(api.fetchModuleReleases).mockReset();
+  });
+
   test("renders module and release rows", async () => {
     const fetchModule = vi.mocked(api.fetchModule);
     const fetchModuleReleases = vi.mocked(api.fetchModuleReleases);

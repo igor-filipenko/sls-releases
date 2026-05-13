@@ -45,7 +45,7 @@ export function HeaderWithFilter({
           className="gap-2"
           onClick={() => onReload()}
           disabled={loading}
-          aria-label="Reload module releases"
+          aria-label="Reload releases"
         >
           <RefreshCw className={`size-4 shrink-0 ${loading ? "animate-spin" : ""}`} aria-hidden />
           Reload

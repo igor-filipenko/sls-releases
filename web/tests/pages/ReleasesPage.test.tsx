@@ -1,7 +1,7 @@
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
-import { describe, expect, test, vi } from "vitest";
+import { beforeEach, describe, expect, test, vi } from "vitest";
 
 import * as api from "@/lib/api";
 import { ReleasesPage } from "@/pages/ReleasesPage";
@@ -15,6 +15,11 @@ vi.mock("@/lib/api", async () => {
 });
 
 describe("ReleasesPage", () => {
+  beforeEach(() => {
+    localStorage.clear();
+    vi.mocked(api.fetchReleases).mockReset();
+  });
+
   test("renders rows and reload triggers another load", async () => {
     const fetchReleases = vi.mocked(api.fetchReleases);
     fetchReleases.mockResolvedValueOnce([
