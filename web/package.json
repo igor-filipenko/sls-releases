@@ -13,7 +13,7 @@
     "test:watch": "vitest --watch",
     "test:ui": "vitest --ui",
     "typecheck:test": "tsc -p tsconfig.test.json --noEmit",
-    "verify": "tsc -p tsconfig.test.json && eslint . && vitest run && prettier . --check",
+    "verify": "tsc -b && eslint . && vite build && vitest run && prettier . --check",
     "preview": "vite preview"
   },
   "dependencies": {
