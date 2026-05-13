@@ -1,18 +1,9 @@
-import { ArrowLeft, ExternalLink, ListFilter, Package, RefreshCw } from "lucide-react";
+import { ArrowLeft, ExternalLink } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Checkbox } from "@/components/ui/checkbox";
-import {
-  Popover,
-  PopoverContent,
-  PopoverDescription,
-  PopoverHeader,
-  PopoverTitle,
-  PopoverTrigger,
-} from "@/components/ui/popover";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table,
@@ -24,13 +15,14 @@ import {
 } from "@/components/ui/table";
 import { fetchModule, fetchModuleReleases, type Module, type ReleaseRow } from "@/lib/api";
 import { VersionLabel } from "@/components/ui/version";
+import { HeaderWithFilter } from "@/components/ui/header";
+import { loadReleaseFilter, saveReleaseFilter, type ReleaseFilter } from "@/lib/filter";
 
 export function ModulePage() {
   const { name: rawName } = useParams<{ name: string }>();
   const moduleName = rawName ? decodeURIComponent(rawName) : "";
 
-  const [includeRc, setIncludeRc] = useState(false);
-  const [includeMilestones, setIncludeMilestones] = useState(false);
+  const [releaseFilter, setReleaseFilter] = useState<ReleaseFilter>(() => loadReleaseFilter());
   const [module, setModule] = useState<Module>({ name: "", localizedName: "" });
   const [rows, setRows] = useState<ReleaseRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -42,18 +34,28 @@ export function ModulePage() {
     setError(null);
     try {
       setModule(await fetchModule(moduleName));
-      setRows(await fetchModuleReleases(moduleName, includeRc, includeMilestones));
+      setRows(
+        await fetchModuleReleases(
+          moduleName,
+          releaseFilter.includeRc,
+          releaseFilter.includeMilestones,
+        ),
+      );
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to load history");
       setRows([]);
     } finally {
       setLoading(false);
     }
-  }, [moduleName, includeRc, includeMilestones]);
+  }, [moduleName, releaseFilter.includeRc, releaseFilter.includeMilestones]);
 
   useEffect(() => {
     void load();
   }, [load]);
+
+  useEffect(() => {
+    saveReleaseFilter(releaseFilter);
+  }, [releaseFilter]);
 
   if (!moduleName) {
     return <p className="text-sm text-muted-foreground">Module not specified.</p>;
@@ -80,90 +82,14 @@ export function ModulePage() {
 
       <Card className="overflow-hidden border shadow-sm">
         <CardHeader className="border-b bg-muted/30">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-            <div className="flex items-center gap-2">
-              <Package className="size-5 text-muted-foreground" aria-hidden />
-              <div>
-                <CardTitle>Versions</CardTitle>
-                <CardDescription>
-                  Timestamps use the server&apos;s local timezone formatting.
-                </CardDescription>
-              </div>
-            </div>
-            <div className="flex items-center gap-2 self-start sm:self-center">
-              <Button
-                variant="outline"
-                size="sm"
-                className="gap-2"
-                onClick={() => void load()}
-                disabled={loading}
-                aria-label="Reload module releases"
-              >
-                <RefreshCw
-                  className={`size-4 shrink-0 ${loading ? "animate-spin" : ""}`}
-                  aria-hidden
-                />
-                Reload
-              </Button>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="gap-2"
-                    aria-label="Filter release types"
-                  >
-                    <ListFilter className="size-4 shrink-0" aria-hidden />
-                    Release types
-                    {includeRc || includeMilestones ? (
-                      <span className="rounded-sm bg-muted px-1.5 py-0.5 text-xs font-normal text-muted-foreground tabular-nums">
-                        {[includeRc, includeMilestones].filter(Boolean).length}
-                      </span>
-                    ) : null}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-80" align="end">
-                  <PopoverHeader>
-                    <PopoverTitle>Release types</PopoverTitle>
-                    <PopoverDescription>
-                      Production tags are always considered. Turn on options below to include
-                      pre-releases in this module&apos;s release history.
-                    </PopoverDescription>
-                  </PopoverHeader>
-                  <div className="flex flex-col gap-3 pt-2">
-                    <div className="flex items-start gap-3">
-                      <Checkbox
-                        id="module-include-rc"
-                        checked={includeRc}
-                        onCheckedChange={(v) => setIncludeRc(v === true)}
-                        className="mt-0.5"
-                      />
-                      <label
-                        htmlFor="module-include-rc"
-                        className="cursor-pointer text-sm font-medium leading-snug peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                      >
-                        Include release candidates
-                      </label>
-                    </div>
-                    <div className="flex items-start gap-3">
-                      <Checkbox
-                        id="module-include-milestones"
-                        checked={includeMilestones}
-                        onCheckedChange={(v) => setIncludeMilestones(v === true)}
-                        className="mt-0.5"
-                      />
-                      <label
-                        htmlFor="module-include-milestones"
-                        className="cursor-pointer text-sm font-medium leading-snug peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                      >
-                        Include milestones
-                      </label>
-                    </div>
-                  </div>
-                </PopoverContent>
-              </Popover>
-            </div>
-          </div>
+          <HeaderWithFilter
+            title="Versions"
+            description="Timestamps use the server's local timezone formatting."
+            filter={releaseFilter}
+            onFilterChange={(next) => setReleaseFilter(next)}
+            loading={loading}
+            onReload={() => void load()}
+          />
         </CardHeader>
         <CardContent className="p-0">
           {error ? (
