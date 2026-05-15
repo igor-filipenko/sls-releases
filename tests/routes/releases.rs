@@ -15,9 +15,7 @@ use sls_releases::routes::releases::ReleasesState;
 use super::{body_string, csv_non_empty_line_count, stores_with_releases};
 
 async fn releases_state_seeded(releases: Vec<Release>) -> ReleasesState {
-    let (stores, pool) = sqlite::in_memory_stores()
-        .await
-        .expect("in-memory sqlite");
+    let (stores, pool) = sqlite::in_memory_stores().await.expect("in-memory sqlite");
 
     let mut seen: HashSet<&str> = HashSet::new();
     for rel in &releases {
@@ -96,10 +94,7 @@ impl ReleasesStore for AlwaysFailingStore {
         Err(PersistenceError::InvalidVersionKind("test".into()))
     }
 
-    async fn get_release(
-        &self,
-        _version: &Version,
-    ) -> Result<Release, PersistenceError> {
+    async fn get_release(&self, _version: &Version) -> Result<Release, PersistenceError> {
         Err(PersistenceError::InvalidVersionKind("test".into()))
     }
 }
@@ -391,10 +386,7 @@ impl ReleasesStore for SqlRowNotFoundStore {
         Ok(vec![])
     }
 
-    async fn get_release(
-        &self,
-        _version: &Version,
-    ) -> Result<Release, PersistenceError> {
+    async fn get_release(&self, _version: &Version) -> Result<Release, PersistenceError> {
         Err(PersistenceError::Sql(sqlx::Error::RowNotFound))
     }
 }

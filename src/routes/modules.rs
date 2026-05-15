@@ -5,7 +5,7 @@ use axum::response::Json;
 use axum::response::{IntoResponse, Response};
 use axum::routing::get;
 
-use crate::persistence::{Stores};
+use crate::persistence::Stores;
 use crate::routes::dto::modules::{Module as ModuleDto, ModulesQuery};
 use crate::routes::{map_store_error, render};
 
@@ -28,7 +28,8 @@ async fn list_modules(
     let name_filter = q.name.as_deref().filter(|s| !s.is_empty());
 
     let modules = state
-        .store.releases
+        .store
+        .releases
         .list_modules(name_filter)
         .await
         .map_err(|e| map_store_error("/sls/modules", e))?;

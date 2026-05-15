@@ -9,8 +9,8 @@ use axum::routing::get;
 
 use crate::domain::release::{ModuleRelease, Release, parse_tag};
 use crate::persistence::{Include, Job, JobStatus, PersistenceError, Stores};
-use crate::routes::dto::releases::{CreateReleaseQuery, ReleaseRow, ReleasesQuery};
 use crate::routes::dto::jobs::{JobDto, JobStatusDto};
+use crate::routes::dto::releases::{CreateReleaseQuery, ReleaseRow, ReleasesQuery};
 use crate::routes::{map_store_error, render};
 
 #[derive(Clone)]
@@ -36,7 +36,9 @@ async fn list_latest(
 
     let include = releases_query_include(use_rc, use_ms);
 
-    let all = state.store.releases
+    let all = state
+        .store
+        .releases
         .get_all_releases(&include)
         .await
         .map_err(|e| map_store_error("/sls/releases", e))?;
@@ -87,7 +89,9 @@ async fn list_module(
 
     let include = releases_query_include(use_rc, use_ms);
 
-    let all = state.store.releases
+    let all = state
+        .store
+        .releases
         .get_releases_by_name(&module, &include)
         .await
         .map_err(|e| map_store_error("/sls/releases/{module}", e))?;
@@ -117,13 +121,20 @@ async fn list_module(
     }
 }
 
-async fn create_release(State(state): State<ReleasesState>, _: HeaderMap, uri: Uri, Query(q): Query<CreateReleaseQuery>) -> Result<Response, StatusCode> {
-    let to_status_error_code = 
-        |err| map_store_error(uri.to_string().as_str(), err);
+async fn create_release(
+    State(state): State<ReleasesState>,
+    _: HeaderMap,
+    uri: Uri,
+    Query(q): Query<CreateReleaseQuery>,
+) -> Result<Response, StatusCode> {
+    let to_status_error_code = |err| map_store_error(uri.to_string().as_str(), err);
     let (_, version) = parse_tag(&q.milestone)
         .ok_or_else(|| PersistenceError::NotFound())
         .map_err(to_status_error_code)?;
-    state.store.releases.get_release(&version)
+    state
+        .store
+        .releases
+        .get_release(&version)
         .await
         .map_err(to_status_error_code)?;
 
@@ -134,10 +145,13 @@ async fn create_release(State(state): State<ReleasesState>, _: HeaderMap, uri: U
         candidate: q.candidate,
         description: q.description,
     };
-    state.store.jobs.create_job(&job)
+    state
+        .store
+        .jobs
+        .create_job(&job)
         .await
         .map_err(to_status_error_code)?;
-    
+
     let dto = JobDto {
         id: id,
         status: JobStatusDto::Pending,
@@ -147,8 +161,15 @@ async fn create_release(State(state): State<ReleasesState>, _: HeaderMap, uri: U
     Ok(Json(dto).into_response())
 }
 
-async fn get_job(State(state): State<ReleasesState>, _: HeaderMap, Path(id): Path<String>) -> Result<Response, StatusCode> {
-    let job = state.store.jobs.get_job(&id)
+async fn get_job(
+    State(state): State<ReleasesState>,
+    _: HeaderMap,
+    Path(id): Path<String>,
+) -> Result<Response, StatusCode> {
+    let job = state
+        .store
+        .jobs
+        .get_job(&id)
         .await
         .map_err(|e| map_store_error("/sls/jobs/{id}", e))?;
     let status = match job.status {

@@ -21,7 +21,7 @@ pub enum PersistenceConnectionError {
     #[error("database error: {0}")]
     Sql(#[from] sqlx::Error),
     #[error("migration error: {0}")]
-    Migrate(#[from] sqlx::migrate::MigrateError),    
+    Migrate(#[from] sqlx::migrate::MigrateError),
 }
 
 /// Controls which persisted rows are returned by read queries.
@@ -71,11 +71,10 @@ pub trait ReleasesStore: Send + Sync {
 /// Jobs that can be created by the system.
 pub enum Job {
     CreateRelease {
-        id: String, 
+        id: String,
         milestone: String,
         candidate: bool,
         description: Option<String>,
-   
     },
 }
 
@@ -96,14 +95,12 @@ pub struct JobResult {
 /// Persistence interface for creating jobs.
 #[async_trait]
 pub trait JobsStore: Send + Sync {
-
     /// Creates a new job.
     /// Returns the job ID.
     async fn create_job(&self, job: &Job) -> Result<(), PersistenceError>;
 
     /// Gets a job by ID.
     async fn get_job(&self, id: &str) -> Result<JobResult, PersistenceError>;
-
 }
 
 #[derive(Clone)]

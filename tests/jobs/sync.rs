@@ -77,9 +77,7 @@ async fn sync_once_mock_github_writes_sqlite() {
         "test-agent".to_string(),
     ));
 
-    let (stores, pool) = sqlite::in_memory_stores()
-        .await
-        .expect("in-memory sqlite");
+    let (stores, pool) = sqlite::in_memory_stores().await.expect("in-memory sqlite");
     sqlx::query("INSERT INTO modules (name, localized_name) VALUES ('a', 'A'), ('b', 'B')")
         .execute(&pool)
         .await

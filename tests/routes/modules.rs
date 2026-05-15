@@ -9,9 +9,7 @@ use sls_releases::routes::modules::ModulesState;
 use super::{body_string, stores_with_releases};
 
 async fn modules_state_with_migrations() -> ModulesState {
-    let (store, _) = sqlite::in_memory_stores()
-        .await
-        .expect("in-memory sqlite");
+    let (store, _) = sqlite::in_memory_stores().await.expect("in-memory sqlite");
 
     ModulesState { store }
 }

@@ -15,9 +15,8 @@ impl SqliteJobsStore {
 
 #[async_trait]
 impl JobsStore for SqliteJobsStore {
-
     async fn create_job(&self, job: &Job) -> Result<(), PersistenceError> {
-        /* 
+        /*
         let mut tx = self.pool.begin().await?;
         let result = sqlx::query("INSERT INTO jobs (id, status, error_code, error_detail) VALUES (?, ?, ?, ?)")
             .bind(&job.id)
@@ -46,5 +45,4 @@ impl JobsStore for SqliteJobsStore {
         */
         Err(PersistenceError::NotFound())
     }
-
 }
