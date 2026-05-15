@@ -33,6 +33,7 @@ impl From<&Release> for ReleaseRow {
     }
 }
 
+#[derive(Debug, serde::Deserialize, Serialize)]
 pub struct CreateReleaseQuery {
     pub milestone: String,
     pub candidate: bool,

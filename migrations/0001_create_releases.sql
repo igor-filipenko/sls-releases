@@ -39,3 +39,20 @@ CREATE TABLE IF NOT EXISTS releases (
 
 CREATE UNIQUE INDEX IF NOT EXISTS releases_uniq
 ON releases (name, version_kind, major, minor, patch, rc_number);
+
+CREATE TABLE IF NOT EXISTS jobs (
+    id TEXT NOT NULL PRIMARY KEY,
+    created_at TEXT NOT NULL,
+    status TEXT NOT NULL,
+    error_code TEXT,
+    error_detail TEXT
+);
+
+CREATE INDEX IF NOT EXISTS jobs_active_idx ON jobs (created_at, id) WHERE status IN ('pending', 'running');
+
+CREATE TABLE IF NOT EXISTS create_release_jobs (
+    id TEXT NOT NULL PRIMARY KEY REFERENCES jobs (id),
+    milestone TEXT NOT NULL,
+    candidate BOOLEAN NOT NULL,
+    description TEXT
+);

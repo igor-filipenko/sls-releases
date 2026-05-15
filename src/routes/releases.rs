@@ -5,7 +5,7 @@ use axum::extract::{Path, Query, State};
 use axum::http::{HeaderMap, StatusCode, Uri};
 use axum::response::Json;
 use axum::response::{IntoResponse, Response};
-use axum::routing::get;
+use axum::routing::{get, post};
 
 use crate::domain::release::{ModuleRelease, Release, parse_tag};
 use crate::persistence::{Include, Job, JobStatus, PersistenceError, Stores};
@@ -22,6 +22,8 @@ pub fn router(state: ReleasesState) -> Router {
     Router::new()
         .route("/sls/releases", get(list_latest))
         .route("/sls/releases/{module}", get(list_module))
+        .route("/sls/jobs", post(create_release))
+        .route("/sls/jobs/{id}", get(get_job))
         .with_state(state)
 }
 
@@ -125,7 +127,7 @@ async fn create_release(
     State(state): State<ReleasesState>,
     _: HeaderMap,
     uri: Uri,
-    Query(q): Query<CreateReleaseQuery>,
+    Json(q): Json<CreateReleaseQuery>,
 ) -> Result<Response, StatusCode> {
     let to_status_error_code = |err| map_store_error(uri.to_string().as_str(), err);
     let (_, version) = parse_tag(&q.milestone)
