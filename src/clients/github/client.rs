@@ -4,8 +4,7 @@ use http::header::{ACCEPT, AUTHORIZATION};
 use reqwest::header::HeaderMap;
 use serde::Deserialize;
 
-use crate::clients::github::parse::parse_tag;
-use crate::domain::release::{Release, ReleaseKind, Version};
+use crate::domain::release::{Release, ReleaseKind, Version, parse_tag};
 
 #[derive(Debug, Clone)]
 pub struct GitHubClient {

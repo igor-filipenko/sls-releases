@@ -15,7 +15,8 @@ use sls_releases::clients::github::ReleasesClient;
 use sls_releases::clients::github::client::GitHubClient;
 use sls_releases::config::{CliConfig, load_config};
 use sls_releases::jobs::sync::spawn_periodic_sync;
-use sls_releases::persistence::{ReleasesStore, SqliteReleasesStore, migrations};
+use sls_releases::persistence::{Stores};
+use sls_releases::persistence::sqlite::{connect as sqlite_connect};
 use sls_releases::routes;
 use sls_releases::routes::modules::ModulesState;
 use sls_releases::routes::releases::ReleasesState;
@@ -69,23 +70,16 @@ async fn main() -> anyhow::Result<()> {
         cfg.github_user_agent.clone(),
     ));
 
-    let sqlite = SqliteReleasesStore::connect(&cfg.sqlite_path)
-        .await
-        .context("failed to open SQLite database")?;
-    migrations::MIGRATOR
-        .run(sqlite.pool())
-        .await
-        .context("failed to run SQLite migrations")?;
-    let store: Arc<dyn ReleasesStore> = Arc::new(sqlite);
+    let stores: Stores = sqlite_connect(&cfg.sqlite_path).await.context("failed to open SQLite database")?;
 
-    spawn_periodic_sync(github.clone(), store.clone(), cfg.refresh_interval_secs);
+    spawn_periodic_sync(github.clone(), stores.releases.clone(), cfg.refresh_interval_secs);
 
     let app = Router::new()
         .merge(routes::releases::router(ReleasesState {
-            store: store.clone(),
+            store: stores.clone(),
         }))
         .merge(routes::modules::router(ModulesState {
-            store: store.clone(),
+            store: stores.clone(),
         }))
         .merge(routes::transactions::router(TransactionsState {
             zone_offset: chrono::Local::now().offset().fix(),

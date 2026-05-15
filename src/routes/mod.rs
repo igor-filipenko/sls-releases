@@ -10,7 +10,7 @@ pub mod transactions;
 pub mod web;
 
 /// Logs persistence failures and returns an HTTP status for route handlers.
-pub(crate) fn map_store_error(route: &'static str, err: PersistenceError) -> StatusCode {
+pub(crate) fn map_store_error(route: &str, err: PersistenceError) -> StatusCode {
     let status = match &err {
         PersistenceError::InvalidVersionKind(_) => StatusCode::INTERNAL_SERVER_ERROR,
         PersistenceError::Sql(e) => match e {
@@ -19,6 +19,7 @@ pub(crate) fn map_store_error(route: &'static str, err: PersistenceError) -> Sta
             }
             _ => StatusCode::BAD_GATEWAY,
         },
+        PersistenceError::NotFound() => StatusCode::BAD_REQUEST,
     };
     tracing::error!(
         route,

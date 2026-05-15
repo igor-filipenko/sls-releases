@@ -1,10 +1,9 @@
-pub mod migrations;
-mod sqlite;
+pub mod sqlite;
 
-pub use sqlite::SqliteReleasesStore;
+use std::sync::Arc;
 
 use crate::domain::module::Module;
-use crate::domain::release::{Release, ReleaseKind, Version};
+use crate::domain::release::{Release, Version};
 use async_trait::async_trait;
 
 #[derive(Debug, thiserror::Error)]
@@ -13,6 +12,16 @@ pub enum PersistenceError {
     Sql(#[from] sqlx::Error),
     #[error("invalid version_kind in database: {0}")]
     InvalidVersionKind(String),
+    #[error("not found")]
+    NotFound(),
+}
+
+#[derive(Debug, thiserror::Error)]
+pub enum PersistenceConnectionError {
+    #[error("database error: {0}")]
+    Sql(#[from] sqlx::Error),
+    #[error("migration error: {0}")]
+    Migrate(#[from] sqlx::migrate::MigrateError),    
 }
 
 /// Controls which persisted rows are returned by read queries.
@@ -54,83 +63,51 @@ pub trait ReleasesStore: Send + Sync {
     /// Lists modules from the `modules` table, ordered by `name` ascending.
     /// When `name` is `Some`, returns at most one row with that exact primary key.
     async fn list_modules(&self, name: Option<&str>) -> Result<Vec<Module>, PersistenceError>;
+
+    /// Returns the release for a given version, if exists.
+    async fn get_release(&self, version: &Version) -> Result<Release, PersistenceError>;
 }
 
+/// Jobs that can be created by the system.
+pub enum Job {
+    CreateRelease {
+        id: String, 
+        milestone: String,
+        candidate: bool,
+        description: Option<String>,
+   
+    },
+}
+
+pub enum JobStatus {
+    Pending,
+    Running,
+    Ok,
+    Failed,
+}
+
+pub struct JobResult {
+    pub id: String,
+    pub status: JobStatus,
+    pub error_code: Option<String>,
+    pub error_detail: Option<String>,
+}
+
+/// Persistence interface for creating jobs.
 #[async_trait]
-impl ReleasesStore for SqliteReleasesStore {
-    async fn get_all_releases(&self, include: &Include) -> Result<Vec<Release>, PersistenceError> {
-        SqliteReleasesStore::get_all_releases(self, include).await
-    }
+pub trait JobsStore: Send + Sync {
 
-    async fn get_releases_by_name(
-        &self,
-        name: &str,
-        include: &Include,
-    ) -> Result<Vec<Release>, PersistenceError> {
-        SqliteReleasesStore::get_releases_by_name(self, name, include).await
-    }
+    /// Creates a new job.
+    /// Returns the job ID.
+    async fn create_job(&self, job: &Job) -> Result<(), PersistenceError>;
 
-    async fn replace_all_releases(&self, releases: Vec<Release>) -> Result<(), PersistenceError> {
-        SqliteReleasesStore::replace_all_releases(self, releases).await
-    }
+    /// Gets a job by ID.
+    async fn get_job(&self, id: &str) -> Result<JobResult, PersistenceError>;
 
-    async fn list_modules(&self, name: Option<&str>) -> Result<Vec<Module>, PersistenceError> {
-        SqliteReleasesStore::list_modules(self, name).await
-    }
 }
 
-pub(crate) fn version_parts(r: &Release) -> (ReleaseKind, i32, i32, i32, Option<i32>) {
-    let kind = r.kind;
-    match &r.version {
-        Version::Release {
-            major,
-            minor,
-            patch,
-        } => (kind, *major, *minor, *patch, None),
-        Version::Candidate {
-            major,
-            minor,
-            patch,
-            number,
-        } => (
-            ReleaseKind::Candidate,
-            *major,
-            *minor,
-            *patch,
-            Some(*number),
-        ),
-    }
-}
-
-pub(crate) fn version_kind_db_str(kind: ReleaseKind) -> &'static str {
-    match kind {
-        ReleaseKind::Milestone => "milestone",
-        ReleaseKind::Production => "production",
-        ReleaseKind::Candidate => "candidate",
-    }
-}
-
-pub(crate) fn version_from_row(
-    kind: &str,
-    major: i32,
-    minor: i32,
-    patch: i32,
-    rc: Option<i32>,
-) -> Result<Version, PersistenceError> {
-    match kind {
-        "production" | "milestone" | "release" => Ok(Version::Release {
-            major,
-            minor,
-            patch,
-        }),
-        "candidate" => Ok(Version::Candidate {
-            major,
-            minor,
-            patch,
-            number: rc.ok_or_else(|| {
-                PersistenceError::InvalidVersionKind("candidate without rc_number".into())
-            })?,
-        }),
-        other => Err(PersistenceError::InvalidVersionKind(other.to_string())),
-    }
+#[derive(Clone)]
+pub struct Stores {
+    pub releases: Arc<dyn ReleasesStore>,
+    pub jobs: Arc<dyn JobsStore>,
 }

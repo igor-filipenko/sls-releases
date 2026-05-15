@@ -3,8 +3,6 @@ use regex::Regex;
 use crate::domain::release::Version;
 
 pub fn parse_tag(tag_name: &str) -> Option<(String, Version)> {
-    // Kotlin regex: ^(.*)-v(\d+).(\d+).(\d+)(-RC\d+)?$
-    // Note: the dots are unescaped there, so they match any char; we intentionally mirror that.
     let re = Regex::new(r"^(.*)-v(\d+).(\d+).(\d+)(-RC\d+)?$").ok()?;
     let caps = re.captures(tag_name)?;
 

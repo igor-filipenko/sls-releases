@@ -1,5 +1,4 @@
 use std::collections::BTreeMap;
-use std::sync::Arc;
 
 use axum::Router;
 use axum::extract::{Path, Query, State};
@@ -8,14 +7,15 @@ use axum::response::Json;
 use axum::response::{IntoResponse, Response};
 use axum::routing::get;
 
-use crate::domain::release::{ModuleRelease, Release};
-use crate::persistence::{Include, ReleasesStore};
-use crate::routes::dto::releases::{ReleaseRow, ReleasesQuery};
+use crate::domain::release::{ModuleRelease, Release, parse_tag};
+use crate::persistence::{Include, Job, JobStatus, PersistenceError, Stores};
+use crate::routes::dto::releases::{CreateReleaseQuery, ReleaseRow, ReleasesQuery};
+use crate::routes::dto::jobs::{JobDto, JobStatusDto};
 use crate::routes::{map_store_error, render};
 
 #[derive(Clone)]
 pub struct ReleasesState {
-    pub store: Arc<dyn ReleasesStore>,
+    pub store: Stores,
 }
 
 pub fn router(state: ReleasesState) -> Router {
@@ -36,8 +36,7 @@ async fn list_latest(
 
     let include = releases_query_include(use_rc, use_ms);
 
-    let all = state
-        .store
+    let all = state.store.releases
         .get_all_releases(&include)
         .await
         .map_err(|e| map_store_error("/sls/releases", e))?;
@@ -88,8 +87,7 @@ async fn list_module(
 
     let include = releases_query_include(use_rc, use_ms);
 
-    let all = state
-        .store
+    let all = state.store.releases
         .get_releases_by_name(&module, &include)
         .await
         .map_err(|e| map_store_error("/sls/releases/{module}", e))?;
@@ -117,6 +115,55 @@ async fn list_module(
         )
             .into_response())
     }
+}
+
+async fn create_release(State(state): State<ReleasesState>, _: HeaderMap, uri: Uri, Query(q): Query<CreateReleaseQuery>) -> Result<Response, StatusCode> {
+    let to_status_error_code = 
+        |err| map_store_error(uri.to_string().as_str(), err);
+    let (_, version) = parse_tag(&q.milestone)
+        .ok_or_else(|| PersistenceError::NotFound())
+        .map_err(to_status_error_code)?;
+    state.store.releases.get_release(&version)
+        .await
+        .map_err(to_status_error_code)?;
+
+    let id = uuid7::uuid7().to_string();
+    let job = Job::CreateRelease {
+        id: id.clone(),
+        milestone: q.milestone,
+        candidate: q.candidate,
+        description: q.description,
+    };
+    state.store.jobs.create_job(&job)
+        .await
+        .map_err(to_status_error_code)?;
+    
+    let dto = JobDto {
+        id: id,
+        status: JobStatusDto::Pending,
+        errorCode: None,
+        errorDetail: None,
+    };
+    Ok(Json(dto).into_response())
+}
+
+async fn get_job(State(state): State<ReleasesState>, _: HeaderMap, Path(id): Path<String>) -> Result<Response, StatusCode> {
+    let job = state.store.jobs.get_job(&id)
+        .await
+        .map_err(|e| map_store_error("/sls/jobs/{id}", e))?;
+    let status = match job.status {
+        JobStatus::Pending => JobStatusDto::Pending,
+        JobStatus::Running => JobStatusDto::Running,
+        JobStatus::Ok => JobStatusDto::Ok,
+        JobStatus::Failed => JobStatusDto::Failed,
+    };
+    let dto = JobDto {
+        id: job.id,
+        status: status,
+        errorCode: job.error_code,
+        errorDetail: job.error_detail,
+    };
+    Ok(Json(dto).into_response())
 }
 
 fn accepts_html(headers: &HeaderMap) -> bool {

@@ -1,5 +1,7 @@
 use std::cmp::Ordering;
 
+use regex::Regex;
+
 #[derive(Debug, Copy, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub enum ReleaseKind {
     Milestone,
@@ -120,4 +122,33 @@ pub struct ModuleRelease {
     pub version: Version,
     pub url: String,
     pub date_time: String,
+}
+
+pub fn parse_tag(tag_name: &str) -> Option<(String, Version)> {
+    let re = Regex::new(r"^(.*)-v(\d+).(\d+).(\d+)(-RC\d+)?$").ok()?;
+    let caps = re.captures(tag_name)?;
+
+    let module = caps.get(1)?.as_str().to_string();
+    let major: i32 = caps.get(2)?.as_str().parse().ok()?;
+    let minor: i32 = caps.get(3)?.as_str().parse().ok()?;
+    let patch: i32 = caps.get(4)?.as_str().parse().ok()?;
+
+    let version = match caps.get(5).map(|m| m.as_str()) {
+        Some(suffix) => {
+            let number: i32 = suffix.strip_prefix("-RC")?.parse().ok()?;
+            Version::Candidate {
+                major,
+                minor,
+                patch,
+                number,
+            }
+        }
+        None => Version::Release {
+            major,
+            minor,
+            patch,
+        },
+    };
+
+    Some((module, version))
 }

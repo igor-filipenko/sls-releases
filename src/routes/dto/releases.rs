@@ -32,3 +32,9 @@ impl From<&Release> for ReleaseRow {
         }
     }
 }
+
+pub struct CreateReleaseQuery {
+    pub milestone: String,
+    pub candidate: bool,
+    pub description: Option<String>,
+}
