@@ -42,8 +42,8 @@ ON releases (name, version_kind, major, minor, patch, rc_number);
 
 CREATE TABLE IF NOT EXISTS jobs (
     id TEXT NOT NULL PRIMARY KEY,
-    created_at TEXT NOT NULL,
-    status TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    status TEXT NOT NULL DEFAULT 'pending',
     error_code TEXT,
     error_detail TEXT
 );

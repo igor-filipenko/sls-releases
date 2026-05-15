@@ -4,7 +4,8 @@ use async_trait::async_trait;
 use axum::response::Response;
 use http_body_util::BodyExt;
 
-use sls_releases::persistence::{Job, JobResult, JobsStore, PersistenceError, Stores};
+use sls_releases::domain::job::{Job, JobResult};
+use sls_releases::persistence::{JobsStore, PersistenceError, Stores};
 
 struct NoopJobsStore;
 

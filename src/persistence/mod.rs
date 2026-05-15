@@ -2,6 +2,7 @@ pub mod sqlite;
 
 use std::sync::Arc;
 
+use crate::domain::job::{Job, JobResult};
 use crate::domain::module::Module;
 use crate::domain::release::{Release, Version};
 use async_trait::async_trait;
@@ -12,6 +13,8 @@ pub enum PersistenceError {
     Sql(#[from] sqlx::Error),
     #[error("invalid version_kind in database: {0}")]
     InvalidVersionKind(String),
+    #[error("invalid job status in database: {0}")]
+    InvalidJobStatus(String),
     #[error("not found")]
     NotFound(),
 }
@@ -66,30 +69,6 @@ pub trait ReleasesStore: Send + Sync {
 
     /// Returns the release for a given version, if exists.
     async fn get_release(&self, version: &Version) -> Result<Release, PersistenceError>;
-}
-
-/// Jobs that can be created by the system.
-pub enum Job {
-    CreateRelease {
-        id: String,
-        milestone: String,
-        candidate: bool,
-        description: Option<String>,
-    },
-}
-
-pub enum JobStatus {
-    Pending,
-    Running,
-    Ok,
-    Failed,
-}
-
-pub struct JobResult {
-    pub id: String,
-    pub status: JobStatus,
-    pub error_code: Option<String>,
-    pub error_detail: Option<String>,
 }
 
 /// Persistence interface for creating jobs.

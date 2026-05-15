@@ -20,6 +20,7 @@ pub(crate) fn map_store_error(route: &str, err: PersistenceError) -> StatusCode 
             _ => StatusCode::BAD_GATEWAY,
         },
         PersistenceError::NotFound() => StatusCode::BAD_REQUEST,
+        PersistenceError::InvalidJobStatus(_) => StatusCode::INTERNAL_SERVER_ERROR,
     };
     tracing::error!(
         route,

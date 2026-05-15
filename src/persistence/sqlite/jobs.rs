@@ -1,7 +1,8 @@
 use async_trait::async_trait;
-use sqlx::SqlitePool;
+use sqlx::{Row, SqlitePool};
 
-use crate::persistence::{Job, JobResult, JobsStore, PersistenceError};
+use crate::domain::job::{Job,JobResult, JobStatus};
+use crate::persistence::{JobsStore, PersistenceError};
 
 pub struct SqliteJobsStore {
     pool: SqlitePool,
@@ -15,34 +16,56 @@ impl SqliteJobsStore {
 
 #[async_trait]
 impl JobsStore for SqliteJobsStore {
+
     async fn create_job(&self, job: &Job) -> Result<(), PersistenceError> {
-        /*
         let mut tx = self.pool.begin().await?;
-        let result = sqlx::query("INSERT INTO jobs (id, status, error_code, error_detail) VALUES (?, ?, ?, ?)")
-            .bind(&job.id)
-            .bind(&job.status)
-            .bind(job.error_code.clone())
-            .bind(job.error_detail.clone())
-            .execute(&mut tx)
+
+        let job_id = match job {
+            Job::CreateRelease { id, .. } => id.clone(),
+        };
+        sqlx::query("INSERT INTO jobs (id) VALUES (?)")
+            .bind(&job_id)
+            .execute(&mut *tx)
             .await?;
+
+        match job {
+            Job::CreateRelease { id, milestone, candidate, description } => {
+                sqlx::query("INSERT INTO create_release_jobs (id, milestone, candidate, description) VALUES (?, ?, ?, ?)")
+                .bind(&id)
+                .bind(&milestone)
+                .bind(&candidate)
+                .bind(&description)
+                .execute(&mut *tx)
+                .await?;
+            }
+        }
+
         tx.commit().await?;
-        */
         Ok(())
     }
 
     async fn get_job(&self, id: &str) -> Result<JobResult, PersistenceError> {
-        /*
-        let result = sqlx::query_as("SELECT id, status, error_code, error_detail FROM jobs WHERE id = ?")
-            .bind(id)
-            .fetch_one(&self.pool)
-            .await?;
+        let row = sqlx::query(r#"
+          SELECT id, status, error_code, error_detail FROM jobs WHERE id = ?
+        "#)
+        .bind(id)
+        .fetch_one(&self.pool)
+        .await?;
         Ok(JobResult {
-            id: result.id,
-            status: result.status,
-            error_code: result.error_code,
-            error_detail: result.error_detail,
+            id: row.try_get("id")?,
+            status: to_status(row.try_get("status")?)?,
+            error_code: row.try_get("error_code")?,
+            error_detail: row.try_get("error_detail")?,
         })
-        */
-        Err(PersistenceError::NotFound())
+    }
+}
+
+fn to_status(status: &str) -> Result<JobStatus, PersistenceError> {
+    match status {
+        "pending" => Ok(JobStatus::Pending),
+        "running" => Ok(JobStatus::Running),
+        "ok" => Ok(JobStatus::Ok),
+        "failed" => Ok(JobStatus::Failed),
+        _ => Err(PersistenceError::InvalidJobStatus(status.to_string())),
     }
 }

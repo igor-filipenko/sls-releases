@@ -7,8 +7,9 @@ use axum::response::Json;
 use axum::response::{IntoResponse, Response};
 use axum::routing::{get, post};
 
+use crate::domain::job::{Job, JobStatus};
 use crate::domain::release::{ModuleRelease, Release, parse_tag};
-use crate::persistence::{Include, Job, JobStatus, PersistenceError, Stores};
+use crate::persistence::{Include, PersistenceError, Stores};
 use crate::routes::dto::jobs::{JobDto, JobStatusDto};
 use crate::routes::dto::releases::{CreateReleaseQuery, ReleaseRow, ReleasesQuery};
 use crate::routes::{map_store_error, render};
