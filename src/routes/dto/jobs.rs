@@ -12,6 +12,8 @@ pub enum JobStatusDto {
 pub struct JobDto {
   pub id: String,
   pub status: JobStatusDto,
-  pub errorCode: Option<String>,
-  pub errorDetail: Option<String>,
+  #[serde(rename = "errorCode")]
+  pub error_code: Option<String>,
+  #[serde(rename = "errorDetail")]
+  pub error_detail: Option<String>,
 }

@@ -141,8 +141,8 @@ async fn create_release(State(state): State<ReleasesState>, _: HeaderMap, uri: U
     let dto = JobDto {
         id: id,
         status: JobStatusDto::Pending,
-        errorCode: None,
-        errorDetail: None,
+        error_code: None,
+        error_detail: None,
     };
     Ok(Json(dto).into_response())
 }
@@ -160,8 +160,8 @@ async fn get_job(State(state): State<ReleasesState>, _: HeaderMap, Path(id): Pat
     let dto = JobDto {
         id: job.id,
         status: status,
-        errorCode: job.error_code,
-        errorDetail: job.error_detail,
+        error_code: job.error_code,
+        error_detail: job.error_detail,
     };
     Ok(Json(dto).into_response())
 }

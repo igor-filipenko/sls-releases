@@ -16,7 +16,7 @@ use sls_releases::clients::github::client::GitHubClient;
 use sls_releases::config::{CliConfig, load_config};
 use sls_releases::jobs::sync::spawn_periodic_sync;
 use sls_releases::persistence::{Stores};
-use sls_releases::persistence::sqlite::{connect as sqlite_connect};
+use sls_releases::persistence::sqlite;
 use sls_releases::routes;
 use sls_releases::routes::modules::ModulesState;
 use sls_releases::routes::releases::ReleasesState;
@@ -70,7 +70,7 @@ async fn main() -> anyhow::Result<()> {
         cfg.github_user_agent.clone(),
     ));
 
-    let stores: Stores = sqlite_connect(&cfg.sqlite_path).await.context("failed to open SQLite database")?;
+    let stores: Stores = sqlite::connect(&cfg.sqlite_path).await.context("failed to open SQLite database")?;
 
     spawn_periodic_sync(github.clone(), stores.releases.clone(), cfg.refresh_interval_secs);
 
