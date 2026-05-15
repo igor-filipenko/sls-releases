@@ -40,3 +40,20 @@ pub async fn in_memory() -> Result<Pool<Sqlite>, PersistenceError> {
     .await?;
     Ok(pool)
 }
+
+/// In-memory SQLite with migrations applied; returns stores and pool (for test seeding).
+pub async fn in_memory_stores() -> Result<(Stores, Pool<Sqlite>), PersistenceConnectionError> {
+    let pool = SqlitePoolOptions::new()
+        .max_connections(1)
+        .connect("sqlite::memory:")
+        .await?;
+    sqlx::query("PRAGMA foreign_keys = ON;")
+        .execute(&pool)
+        .await?;
+    sqlx::migrate!().run(&pool).await?;
+    let stores = Stores {
+        releases: Arc::new(SqliteReleasesStore::new(pool.clone())),
+        jobs: Arc::new(SqliteJobsStore::new(pool.clone())),
+    };
+    Ok((stores, pool))
+}

@@ -8,22 +8,16 @@ use tower::ServiceExt;
 use sls_releases::domain::release::Release;
 use sls_releases::domain::release::ReleaseKind;
 use sls_releases::domain::release::Version;
-use sls_releases::persistence::{
-    Include, PersistenceError, ReleasesStore, SqliteReleasesStore, migrations,
-};
+use sls_releases::persistence::{Include, PersistenceError, ReleasesStore, sqlite};
 use sls_releases::routes;
 use sls_releases::routes::releases::ReleasesState;
 
-use super::{body_string, csv_non_empty_line_count};
+use super::{body_string, csv_non_empty_line_count, stores_with_releases};
 
 async fn releases_state_seeded(releases: Vec<Release>) -> ReleasesState {
-    let store = SqliteReleasesStore::in_memory()
+    let (stores, pool) = sqlite::in_memory_stores()
         .await
         .expect("in-memory sqlite");
-    migrations::MIGRATOR
-        .run(store.pool())
-        .await
-        .expect("run migrations");
 
     let mut seen: HashSet<&str> = HashSet::new();
     for rel in &releases {
@@ -31,20 +25,19 @@ async fn releases_state_seeded(releases: Vec<Release>) -> ReleasesState {
             sqlx::query("INSERT OR REPLACE INTO modules (name, localized_name) VALUES (?, ?)")
                 .bind(&rel.name)
                 .bind(&rel.localized_name)
-                .execute(store.pool())
+                .execute(&pool)
                 .await
                 .expect("seed module for test");
         }
     }
 
-    store
+    stores
+        .releases
         .replace_all_releases(releases)
         .await
         .expect("seed store");
 
-    ReleasesState {
-        store: std::sync::Arc::new(store),
-    }
+    ReleasesState { store: stores }
 }
 
 fn r(name: &str, localized_name: &str, version: Version, url: &str) -> Release {
@@ -100,6 +93,13 @@ impl ReleasesStore for AlwaysFailingStore {
         &self,
         _name: Option<&str>,
     ) -> Result<Vec<sls_releases::domain::module::Module>, PersistenceError> {
+        Err(PersistenceError::InvalidVersionKind("test".into()))
+    }
+
+    async fn get_release(
+        &self,
+        _version: &Version,
+    ) -> Result<Release, PersistenceError> {
         Err(PersistenceError::InvalidVersionKind("test".into()))
     }
 }
@@ -348,7 +348,7 @@ async fn releases_list_accept_header_html_wins_over_json() {
 #[tokio::test]
 async fn releases_list_persistence_invalid_version_returns_500() {
     let app = routes::releases::router(ReleasesState {
-        store: std::sync::Arc::new(AlwaysFailingStore),
+        store: stores_with_releases(std::sync::Arc::new(AlwaysFailingStore)),
     });
 
     let resp = app
@@ -390,12 +390,19 @@ impl ReleasesStore for SqlRowNotFoundStore {
     ) -> Result<Vec<sls_releases::domain::module::Module>, PersistenceError> {
         Ok(vec![])
     }
+
+    async fn get_release(
+        &self,
+        _version: &Version,
+    ) -> Result<Release, PersistenceError> {
+        Err(PersistenceError::Sql(sqlx::Error::RowNotFound))
+    }
 }
 
 #[tokio::test]
 async fn releases_list_persistence_sql_error_returns_502() {
     let app = routes::releases::router(ReleasesState {
-        store: std::sync::Arc::new(SqlRowNotFoundStore),
+        store: stores_with_releases(std::sync::Arc::new(SqlRowNotFoundStore)),
     });
 
     let resp = app
@@ -414,7 +421,7 @@ async fn releases_list_persistence_sql_error_returns_502() {
 #[tokio::test]
 async fn releases_module_persistence_sql_error_returns_502() {
     let app = routes::releases::router(ReleasesState {
-        store: std::sync::Arc::new(SqlRowNotFoundStore),
+        store: stores_with_releases(std::sync::Arc::new(SqlRowNotFoundStore)),
     });
 
     let resp = app

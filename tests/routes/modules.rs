@@ -2,24 +2,18 @@ use axum::body::Body;
 use axum::http::{Request, StatusCode};
 use tower::ServiceExt;
 
-use sls_releases::persistence::{SqliteReleasesStore, migrations};
+use sls_releases::persistence::sqlite;
 use sls_releases::routes;
 use sls_releases::routes::modules::ModulesState;
 
-use super::body_string;
+use super::{body_string, stores_with_releases};
 
 async fn modules_state_with_migrations() -> ModulesState {
-    let store = SqliteReleasesStore::in_memory()
+    let (store, _) = sqlite::in_memory_stores()
         .await
         .expect("in-memory sqlite");
-    migrations::MIGRATOR
-        .run(store.pool())
-        .await
-        .expect("run migrations");
 
-    ModulesState {
-        store: std::sync::Arc::new(store),
-    }
+    ModulesState { store }
 }
 
 #[tokio::test]
@@ -189,10 +183,17 @@ async fn modules_list_persistence_invalid_version_returns_500() {
         ) -> Result<Vec<sls_releases::domain::module::Module>, PersistenceError> {
             Err(PersistenceError::InvalidVersionKind("test".into()))
         }
+
+        async fn get_release(
+            &self,
+            _version: &sls_releases::domain::release::Version,
+        ) -> Result<Release, PersistenceError> {
+            Err(PersistenceError::InvalidVersionKind("test".into()))
+        }
     }
 
     let app = routes::modules::router(ModulesState {
-        store: std::sync::Arc::new(AlwaysFailingStore),
+        store: stores_with_releases(std::sync::Arc::new(AlwaysFailingStore)),
     });
 
     let resp = app
@@ -246,10 +247,17 @@ async fn modules_list_persistence_sql_error_returns_502() {
         ) -> Result<Vec<sls_releases::domain::module::Module>, PersistenceError> {
             Err(PersistenceError::Sql(sqlx::Error::RowNotFound))
         }
+
+        async fn get_release(
+            &self,
+            _version: &sls_releases::domain::release::Version,
+        ) -> Result<Release, PersistenceError> {
+            Err(PersistenceError::Sql(sqlx::Error::RowNotFound))
+        }
     }
 
     let app = routes::modules::router(ModulesState {
-        store: std::sync::Arc::new(SqlRowNotFoundStore),
+        store: stores_with_releases(std::sync::Arc::new(SqlRowNotFoundStore)),
     });
 
     let resp = app
