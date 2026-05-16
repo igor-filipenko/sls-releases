@@ -1,4 +1,4 @@
-import { ArrowLeft, ExternalLink } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 
@@ -13,6 +13,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { ReleaseCommands } from "@/components/sl/commands";
 import { fetchModule, fetchModuleReleases, type Module, type ReleaseRow } from "@/lib/api";
 import { VersionLabel } from "@/components/sl/version";
 import { HeaderWithFilter } from "@/components/sl/header";
@@ -115,7 +116,7 @@ export function ModulePage() {
                 <TableRow className="hover:bg-transparent">
                   <TableHead className="w-[180px]">Version</TableHead>
                   <TableHead>Published</TableHead>
-                  <TableHead className="text-center w-[110px]">GitHub</TableHead>
+                  <TableHead className="text-center w-[110px]" />
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -125,18 +126,8 @@ export function ModulePage() {
                       <VersionLabel release={r} />
                     </TableCell>
                     <TableCell className="text-muted-foreground">{r.dateTime}</TableCell>
-                    <TableCell className="text-right">
-                      <Button variant="ghost" size="sm" asChild>
-                        <a
-                          href={r.url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1"
-                        >
-                          Open
-                          <ExternalLink className="size-3.5" />
-                        </a>
-                      </Button>
+                    <TableCell className="text-center">
+                      <ReleaseCommands url={r.url} moduleName={r.name} version={r.version} />
                     </TableCell>
                   </TableRow>
                 ))}
