@@ -27,18 +27,19 @@ impl ReleasesStore for SqliteReleasesStore {
     }
 
     async fn get_release(&self, version: &Version) -> Result<Release, PersistenceError> {
+        const SQL: &str = r#"SELECT r.name, m.localized_name, r.url, r.date_time, r.version_kind, r.major, r.minor, r.patch, r.rc_number, r.closed
+               FROM releases r
+               INNER JOIN modules m ON m.name = r.name
+               WHERE "#;
         let row = match version {
             Version::Release {
                 major,
                 minor,
                 patch,
             } => {
-                sqlx::query(
-                    r#"SELECT * FROM releases
-                               WHERE version_kind <> 'candidate'
-                                 AND major = ? AND minor = ? AND patch = ?
-                "#,
-                )
+                sqlx::query(&format!(
+                    "{SQL} r.version_kind <> 'candidate' AND r.major = ? AND r.minor = ? AND r.patch = ?"
+                ))
                 .bind(major)
                 .bind(minor)
                 .bind(patch)
@@ -51,12 +52,9 @@ impl ReleasesStore for SqliteReleasesStore {
                 patch,
                 number,
             } => {
-                sqlx::query(
-                    r#"SELECT * FROM releases
-                               WHERE version_kind = 'candidate'
-                                 AND major = ? AND minor = ? AND patch = ? AND number = ?
-                "#,
-                )
+                sqlx::query(&format!(
+                    "{SQL} r.version_kind = 'candidate' AND r.major = ? AND r.minor = ? AND r.patch = ? AND r.rc_number = ?"
+                ))
                 .bind(major)
                 .bind(minor)
                 .bind(patch)

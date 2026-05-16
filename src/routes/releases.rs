@@ -8,7 +8,7 @@ use axum::response::{IntoResponse, Response};
 use axum::routing::{get, post};
 
 use crate::domain::job::{Job, JobStatus};
-use crate::domain::release::{ModuleRelease, Release, parse_tag};
+use crate::domain::release::{ModuleRelease, Release, ReleaseKind, parse_tag};
 use crate::persistence::{Include, PersistenceError, Stores};
 use crate::routes::dto::jobs::{JobDto, JobStatusDto};
 use crate::routes::dto::releases::{CreateReleaseQuery, ReleaseRow, ReleasesQuery};
@@ -23,7 +23,7 @@ pub fn router(state: ReleasesState) -> Router {
     Router::new()
         .route("/sls/releases", get(list_latest))
         .route("/sls/releases/{module}", get(list_module))
-        .route("/sls/jobs", post(create_release))
+        .route("/sls/releases", post(create_release))
         .route("/sls/jobs/{id}", get(get_job))
         .with_state(state)
 }
@@ -134,12 +134,19 @@ async fn create_release(
     let (_, version) = parse_tag(&q.milestone)
         .ok_or_else(|| PersistenceError::NotFound())
         .map_err(to_status_error_code)?;
-    state
+    let release = state
         .store
         .releases
         .get_release(&version)
         .await
+        .map_err(|e| match e {
+            PersistenceError::Sql(sqlx::Error::RowNotFound) => PersistenceError::NotFound(),
+            other => other,
+        })
         .map_err(to_status_error_code)?;
+    if release.kind != ReleaseKind::Milestone || release.closed {
+        return Err(to_status_error_code(PersistenceError::NotFound()));
+    }
 
     let id = uuid7::uuid7().to_string();
     let job = Job::CreateRelease {

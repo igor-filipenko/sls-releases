@@ -2,9 +2,10 @@ use std::collections::HashSet;
 
 use async_trait::async_trait;
 use axum::body::Body;
-use axum::http::{Request, StatusCode};
+use axum::http::{Method, Request, StatusCode};
 use tower::ServiceExt;
 
+use sls_releases::domain::job::Job;
 use sls_releases::domain::release::Release;
 use sls_releases::domain::release::ReleaseKind;
 use sls_releases::domain::release::Version;
@@ -56,6 +57,20 @@ fn r(name: &str, localized_name: &str, version: Version, url: &str) -> Release {
 }
 
 fn ms(name: &str, localized_name: &str, version: Version, url: &str) -> Release {
+    ms_with_closed(name, localized_name, version, url, false)
+}
+
+fn ms_closed(name: &str, localized_name: &str, version: Version, url: &str) -> Release {
+    ms_with_closed(name, localized_name, version, url, true)
+}
+
+fn ms_with_closed(
+    name: &str,
+    localized_name: &str,
+    version: Version,
+    url: &str,
+    closed: bool,
+) -> Release {
     Release {
         name: name.to_string(),
         localized_name: localized_name.to_string(),
@@ -63,8 +78,36 @@ fn ms(name: &str, localized_name: &str, version: Version, url: &str) -> Release 
         version,
         url: url.to_string(),
         date_time: "2026-01-01T00:00:00Z".to_string(),
-        closed: false,
+        closed,
     }
+}
+
+fn milestone_tag(module: &str, version: &Version) -> String {
+    format!("{module}-v{version}")
+}
+
+async fn post_create_release(
+    app: &axum::Router,
+    milestone: &str,
+    candidate: bool,
+    description: Option<&str>,
+) -> axum::response::Response {
+    let body = serde_json::json!({
+        "milestone": milestone,
+        "candidate": candidate,
+        "description": description,
+    });
+    app.clone()
+        .oneshot(
+            Request::builder()
+                .method(Method::POST)
+                .uri("/sls/releases")
+                .header(axum::http::header::CONTENT_TYPE, "application/json")
+                .body(Body::from(body.to_string()))
+                .unwrap(),
+        )
+        .await
+        .unwrap()
 }
 
 struct AlwaysFailingStore;
@@ -809,4 +852,113 @@ async fn releases_module_csv_ms_true_includes_milestones_ordered_desc() {
     let first_line = body.lines().find(|l| !l.is_empty()).unwrap();
     assert!(first_line.contains("2.0.0"));
     assert!(body.contains("m200ms"));
+}
+
+#[tokio::test]
+async fn create_release_not_exists_milestone_returns_400() {
+    let app = routes::releases::router(releases_state_seeded(vec![]).await);
+
+    let resp = post_create_release(
+        &app,
+        &milestone_tag("m", &Version::Release {
+            major: 9,
+            minor: 0,
+            patch: 0,
+        }),
+        false,
+        None,
+    )
+    .await;
+
+    assert_eq!(resp.status(), StatusCode::BAD_REQUEST);
+}
+
+#[tokio::test]
+async fn create_release_version_not_milestone_returns_400() {
+    let version = Version::Release {
+        major: 1,
+        minor: 0,
+        patch: 0,
+    };
+    let releases = vec![r("m", "M", version.clone(), "https://example/m100")];
+    let app = routes::releases::router(releases_state_seeded(releases).await);
+
+    let resp = post_create_release(&app, &milestone_tag("m", &version), false, None).await;
+
+    assert_eq!(resp.status(), StatusCode::BAD_REQUEST);
+}
+
+#[tokio::test]
+async fn create_release_closed_milestone_returns_400() {
+    let version = Version::Release {
+        major: 2,
+        minor: 0,
+        patch: 0,
+    };
+    let releases = vec![ms_closed("m", "M", version.clone(), "https://example/m200ms")];
+    let app = routes::releases::router(releases_state_seeded(releases).await);
+
+    let resp = post_create_release(&app, &milestone_tag("m", &version), false, None).await;
+
+    assert_eq!(resp.status(), StatusCode::BAD_REQUEST);
+}
+
+#[tokio::test]
+async fn get_job_returns_pending_status() {
+    let version = Version::Release {
+        major: 1,
+        minor: 0,
+        patch: 0,
+    };
+    let releases = vec![ms("m", "M", version.clone(), "https://example/m100ms")];
+    let state = releases_state_seeded(releases).await;
+    let job_id = "job-test-001".to_string();
+    state
+        .store
+        .jobs
+        .create_job(&Job::CreateRelease {
+            id: job_id.clone(),
+            milestone: milestone_tag("m", &version),
+            candidate: false,
+            description: Some("release notes".into()),
+        })
+        .await
+        .expect("seed job");
+
+    let app = routes::releases::router(state);
+
+    let resp = app
+        .oneshot(
+            Request::builder()
+                .uri(format!("/sls/jobs/{job_id}"))
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(resp.status(), StatusCode::OK);
+    let body = body_string(resp).await;
+    let v: serde_json::Value = serde_json::from_str(&body).expect("valid JSON");
+    assert_eq!(v["id"], job_id);
+    assert_eq!(v["status"], "Pending");
+    assert!(v["errorCode"].is_null());
+    assert!(v["errorDetail"].is_null());
+}
+
+#[tokio::test]
+async fn get_job_not_exists_returns_400() {
+    let app = routes::releases::router(releases_state_seeded(vec![]).await);
+
+    let resp = app
+        .oneshot(
+            Request::builder()
+                .uri("/sls/jobs/does-not-exist")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(resp.status(), StatusCode::BAD_REQUEST);
 }
