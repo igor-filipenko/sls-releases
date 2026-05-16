@@ -14,8 +14,8 @@ use tracing_subscriber::EnvFilter;
 use sls_releases::clients::github::ReleasesClient;
 use sls_releases::clients::github::client::GitHubClient;
 use sls_releases::config::{CliConfig, load_config};
-use sls_releases::jobs::jobs::spawn_jobs_loop;
-use sls_releases::jobs::sync::spawn_periodic_sync;
+use sls_releases::jobs::runner;
+use sls_releases::jobs::sync;
 use sls_releases::persistence::Stores;
 use sls_releases::persistence::sqlite;
 use sls_releases::routes;
@@ -75,12 +75,12 @@ async fn main() -> anyhow::Result<()> {
         .await
         .context("failed to open SQLite database")?;
 
-    spawn_periodic_sync(
+    sync::spawn_periodic_sync(
         github.clone(),
         stores.releases.clone(),
         cfg.refresh_interval_secs,
     );
-    spawn_jobs_loop(github.clone(), Arc::new(stores.clone()));
+    runner::spawn_jobs_loop(github.clone(), Arc::new(stores.clone()));
 
     let app = Router::new()
         .merge(routes::releases::router(ReleasesState {

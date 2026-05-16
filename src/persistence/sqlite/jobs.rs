@@ -35,10 +35,10 @@ impl JobsStore for SqliteJobsStore {
                 description,
             } => {
                 sqlx::query("INSERT INTO create_release_jobs (id, milestone, candidate, description) VALUES (?, ?, ?, ?)")
-                .bind(&id)
-                .bind(&milestone)
-                .bind(&candidate)
-                .bind(&description)
+                .bind(id)
+                .bind(milestone)
+                .bind(candidate)
+                .bind(description)
                 .execute(&mut *tx)
                 .await?;
             }

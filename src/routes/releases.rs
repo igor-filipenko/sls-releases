@@ -132,7 +132,7 @@ async fn create_release(
 ) -> Result<Response, StatusCode> {
     let to_status_error_code = |err| map_store_error(uri.to_string().as_str(), err);
     let (_, version) = parse_tag(&q.milestone)
-        .ok_or_else(|| PersistenceError::NotFound())
+        .ok_or_else(PersistenceError::NotFound)
         .map_err(to_status_error_code)?;
     let release = state
         .store
@@ -163,7 +163,7 @@ async fn create_release(
         .map_err(to_status_error_code)?;
 
     let dto = JobDto {
-        id: id,
+        id,
         status: JobStatusDto::Pending,
         error_code: None,
         error_detail: None,
@@ -190,7 +190,7 @@ async fn get_job(
     };
     let dto = JobDto {
         id: job.id,
-        status: status,
+        status,
         error_code: job.error_code,
         error_detail: job.error_detail,
     };
