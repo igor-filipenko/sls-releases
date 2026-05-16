@@ -162,6 +162,7 @@ impl ReleasesStore for SqliteReleasesStore {
                 .await?;
             processed += 1;
             if result.rows_affected() > 0 {
+                log::info!("release changed: {}", r);
                 changed += 1;
             }
         }

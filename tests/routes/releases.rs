@@ -860,11 +860,14 @@ async fn create_release_not_exists_milestone_returns_400() {
 
     let resp = post_create_release(
         &app,
-        &milestone_tag("m", &Version::Release {
-            major: 9,
-            minor: 0,
-            patch: 0,
-        }),
+        &milestone_tag(
+            "m",
+            &Version::Release {
+                major: 9,
+                minor: 0,
+                patch: 0,
+            },
+        ),
         false,
         None,
     )
@@ -895,7 +898,12 @@ async fn create_release_closed_milestone_returns_400() {
         minor: 0,
         patch: 0,
     };
-    let releases = vec![ms_closed("m", "M", version.clone(), "https://example/m200ms")];
+    let releases = vec![ms_closed(
+        "m",
+        "M",
+        version.clone(),
+        "https://example/m200ms",
+    )];
     let app = routes::releases::router(releases_state_seeded(releases).await);
 
     let resp = post_create_release(&app, &milestone_tag("m", &version), false, None).await;

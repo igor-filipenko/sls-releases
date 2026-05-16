@@ -80,6 +80,12 @@ pub trait JobsStore: Send + Sync {
 
     /// Gets a job by ID.
     async fn get_job(&self, id: &str) -> Result<JobResult, PersistenceError>;
+
+    /// Gets the next job to process.
+    async fn get_next_job(&self) -> Result<Job, PersistenceError>;
+
+    /// Sets the result of a job execution.
+    async fn set_job_result(&self, id: &str, result: JobResult) -> Result<(), PersistenceError>;
 }
 
 #[derive(Clone)]

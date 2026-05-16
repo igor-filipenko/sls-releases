@@ -1,6 +1,5 @@
-use std::cmp::Ordering;
-
 use regex::Regex;
+use std::cmp::Ordering;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub enum ReleaseKind {
@@ -108,6 +107,16 @@ impl Ord for Release {
             Ordering::Equal => self.kind.rank().cmp(&other.kind.rank()),
             o => o,
         }
+    }
+}
+
+impl std::fmt::Display for Release {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{} ({}) {}",
+            self.name, self.localized_name, self.version
+        )
     }
 }
 

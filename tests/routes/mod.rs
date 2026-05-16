@@ -18,6 +18,14 @@ impl JobsStore for NoopJobsStore {
     async fn get_job(&self, _id: &str) -> Result<JobResult, PersistenceError> {
         Err(PersistenceError::NotFound())
     }
+
+    async fn get_next_job(&self) -> Result<Job, PersistenceError> {
+        Err(PersistenceError::NotFound())
+    }
+
+    async fn set_job_result(&self, _id: &str, _result: JobResult) -> Result<(), PersistenceError> {
+        Ok(())
+    }
 }
 
 pub fn stores_with_releases(releases: Arc<dyn sls_releases::persistence::ReleasesStore>) -> Stores {
