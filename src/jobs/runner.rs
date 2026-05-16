@@ -21,19 +21,14 @@ pub async fn handle_next_job(
     };
 
     let job_id = job.id();
+    let result = JobResult {
+        id: job_id.clone(),
+        status: JobStatus::Failed,
+        error_code: Some("NOT_IMPLEMENTED".to_string()),
+        error_detail: Some("Under construction".to_string()),
+    };
     match job {
-        Job::CreateRelease {
-            milestone: _,
-            candidate: _,
-            description: _,
-            ..
-        } => {
-            let result = JobResult {
-                id: job_id.clone(),
-                status: JobStatus::Failed,
-                error_code: Some("NOT_IMPLEMENTED".to_string()),
-                error_detail: Some("Under construction".to_string()),
-            };
+        Job::CreateRelease { .. } | Job::DeleteRelease { .. } => {
             stores
                 .jobs
                 .set_job_result(&job_id, result)

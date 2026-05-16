@@ -1,3 +1,4 @@
+/// A trait for any job.
 pub trait AnyJob {
     fn id(&self) -> String;
 }
@@ -12,12 +13,14 @@ pub enum Job {
         candidate: bool,
         description: Option<String>,
     },
+    /// Delete an existing candidate release by GitHub tag.
+    DeleteRelease { id: String, tag: String },
 }
 
 impl AnyJob for Job {
     fn id(&self) -> String {
         match self {
-            Job::CreateRelease { id, .. } => id.clone(),
+            Job::CreateRelease { id, .. } | Job::DeleteRelease { id, .. } => id.clone(),
         }
     }
 }

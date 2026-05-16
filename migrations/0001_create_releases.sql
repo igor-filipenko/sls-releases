@@ -56,3 +56,8 @@ CREATE TABLE IF NOT EXISTS create_release_jobs (
     candidate BOOLEAN NOT NULL,
     description TEXT
 );
+
+CREATE TABLE IF NOT EXISTS delete_release_jobs (
+    id TEXT NOT NULL PRIMARY KEY REFERENCES jobs (id),
+    tag TEXT NOT NULL
+);

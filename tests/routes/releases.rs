@@ -86,6 +86,25 @@ fn milestone_tag(module: &str, version: &Version) -> String {
     format!("{module}-v{version}")
 }
 
+fn candidate_tag(module: &str, version: &Version) -> String {
+    format!("{module}-v{version}")
+}
+
+async fn delete_release(app: &axum::Router, tag: &str) -> axum::response::Response {
+    let body = serde_json::json!({ "tag": tag });
+    app.clone()
+        .oneshot(
+            Request::builder()
+                .method(Method::DELETE)
+                .uri("/sls/releases")
+                .header(axum::http::header::CONTENT_TYPE, "application/json")
+                .body(Body::from(body.to_string()))
+                .unwrap(),
+        )
+        .await
+        .unwrap()
+}
+
 async fn post_create_release(
     app: &axum::Router,
     milestone: &str,
@@ -952,6 +971,110 @@ async fn get_job_returns_pending_status() {
     assert_eq!(v["status"], "Pending");
     assert!(v["errorCode"].is_null());
     assert!(v["errorDetail"].is_null());
+}
+
+#[tokio::test]
+async fn delete_release_invalid_tag_returns_400() {
+    let app = routes::releases::router(releases_state_seeded(vec![]).await);
+
+    let resp = delete_release(&app, "not-a-valid-tag").await;
+
+    assert_eq!(resp.status(), StatusCode::BAD_REQUEST);
+}
+
+#[tokio::test]
+async fn delete_release_not_found_returns_400() {
+    let version = Version::Candidate {
+        major: 1,
+        minor: 0,
+        patch: 0,
+        number: 1,
+    };
+    let app = routes::releases::router(releases_state_seeded(vec![]).await);
+
+    let resp = delete_release(&app, &candidate_tag("m", &version)).await;
+
+    assert_eq!(resp.status(), StatusCode::BAD_REQUEST);
+}
+
+#[tokio::test]
+async fn delete_release_production_returns_400() {
+    let version = Version::Release {
+        major: 1,
+        minor: 0,
+        patch: 0,
+    };
+    let releases = vec![r("m", "M", version.clone(), "https://example/m100")];
+    let app = routes::releases::router(releases_state_seeded(releases).await);
+
+    let resp = delete_release(&app, &milestone_tag("m", &version)).await;
+
+    assert_eq!(resp.status(), StatusCode::BAD_REQUEST);
+}
+
+#[tokio::test]
+async fn delete_release_milestone_returns_400() {
+    let version = Version::Release {
+        major: 2,
+        minor: 0,
+        patch: 0,
+    };
+    let releases = vec![ms("m", "M", version.clone(), "https://example/m200ms")];
+    let app = routes::releases::router(releases_state_seeded(releases).await);
+
+    let resp = delete_release(&app, &milestone_tag("m", &version)).await;
+
+    assert_eq!(resp.status(), StatusCode::BAD_REQUEST);
+}
+
+#[tokio::test]
+async fn delete_release_module_mismatch_returns_400() {
+    let version = Version::Candidate {
+        major: 1,
+        minor: 0,
+        patch: 0,
+        number: 1,
+    };
+    let releases = vec![r("m", "M", version.clone(), "https://example/m-rc1")];
+    let app = routes::releases::router(releases_state_seeded(releases).await);
+
+    let resp = delete_release(&app, &candidate_tag("other", &version)).await;
+
+    assert_eq!(resp.status(), StatusCode::BAD_REQUEST);
+}
+
+#[tokio::test]
+async fn delete_release_candidate_returns_pending_job() {
+    let version = Version::Candidate {
+        major: 1,
+        minor: 0,
+        patch: 0,
+        number: 2,
+    };
+    let tag = candidate_tag("m", &version);
+    let releases = vec![r("m", "M", version.clone(), "https://example/m-rc2")];
+    let app = routes::releases::router(releases_state_seeded(releases).await);
+
+    let resp = delete_release(&app, &tag).await;
+
+    assert_eq!(resp.status(), StatusCode::OK);
+    let body = body_string(resp).await;
+    let v: serde_json::Value = serde_json::from_str(&body).expect("valid JSON");
+    assert_eq!(v["status"], "Pending");
+    assert!(v["errorCode"].is_null());
+    assert!(v["errorDetail"].is_null());
+    let job_id = v["id"].as_str().expect("job id");
+
+    let job_resp = app
+        .oneshot(
+            Request::builder()
+                .uri(format!("/sls/jobs/{job_id}"))
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(job_resp.status(), StatusCode::OK);
 }
 
 #[tokio::test]

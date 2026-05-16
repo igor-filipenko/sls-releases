@@ -5,13 +5,15 @@ use axum::extract::{Path, Query, State};
 use axum::http::{HeaderMap, StatusCode, Uri};
 use axum::response::Json;
 use axum::response::{IntoResponse, Response};
-use axum::routing::{get, post};
+use axum::routing::{delete, get, post};
 
 use crate::domain::job::{Job, JobStatus};
 use crate::domain::release::{ModuleRelease, Release, ReleaseKind, parse_tag};
 use crate::persistence::{Include, PersistenceError, Stores};
 use crate::routes::dto::jobs::{JobDto, JobStatusDto};
-use crate::routes::dto::releases::{CreateReleaseQuery, ReleaseRow, ReleasesQuery};
+use crate::routes::dto::releases::{
+    CreateReleaseQuery, DeleteReleaseQuery, ReleaseRow, ReleasesQuery,
+};
 use crate::routes::{map_store_error, render};
 
 #[derive(Clone)]
@@ -24,6 +26,7 @@ pub fn router(state: ReleasesState) -> Router {
         .route("/sls/releases", get(list_latest))
         .route("/sls/releases/{module}", get(list_module))
         .route("/sls/releases", post(create_release))
+        .route("/sls/releases", delete(delete_release))
         .route("/sls/jobs/{id}", get(get_job))
         .with_state(state)
 }
@@ -154,6 +157,51 @@ async fn create_release(
         milestone: q.milestone,
         candidate: q.candidate,
         description: q.description,
+    };
+    state
+        .store
+        .jobs
+        .create_job(&job)
+        .await
+        .map_err(to_status_error_code)?;
+
+    let dto = JobDto {
+        id,
+        status: JobStatusDto::Pending,
+        error_code: None,
+        error_detail: None,
+    };
+    Ok(Json(dto).into_response())
+}
+
+async fn delete_release(
+    State(state): State<ReleasesState>,
+    _: HeaderMap,
+    uri: Uri,
+    Json(q): Json<DeleteReleaseQuery>,
+) -> Result<Response, StatusCode> {
+    let to_status_error_code = |err| map_store_error(uri.to_string().as_str(), err);
+    let (module, version) = parse_tag(&q.tag)
+        .ok_or_else(PersistenceError::NotFound)
+        .map_err(to_status_error_code)?;
+    let release = state
+        .store
+        .releases
+        .get_release(&version)
+        .await
+        .map_err(|e| match e {
+            PersistenceError::Sql(sqlx::Error::RowNotFound) => PersistenceError::NotFound(),
+            other => other,
+        })
+        .map_err(to_status_error_code)?;
+    if release.kind != ReleaseKind::Candidate || release.name != module {
+        return Err(to_status_error_code(PersistenceError::NotFound()));
+    }
+
+    let id = uuid7::uuid7().to_string();
+    let job = Job::DeleteRelease {
+        id: id.clone(),
+        tag: q.tag,
     };
     state
         .store

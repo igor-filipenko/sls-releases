@@ -1,7 +1,7 @@
 use async_trait::async_trait;
 use sqlx::{Row, SqlitePool};
 
-use crate::domain::job::{Job, JobResult, JobStatus};
+use crate::domain::job::{AnyJob, Job, JobResult, JobStatus};
 use crate::persistence::{JobsStore, PersistenceError};
 
 pub struct SqliteJobsStore {
@@ -19,9 +19,7 @@ impl JobsStore for SqliteJobsStore {
     async fn create_job(&self, job: &Job) -> Result<(), PersistenceError> {
         let mut tx = self.pool.begin().await?;
 
-        let job_id = match job {
-            Job::CreateRelease { id, .. } => id.clone(),
-        };
+        let job_id = job.id();
         sqlx::query("INSERT INTO jobs (id) VALUES (?)")
             .bind(&job_id)
             .execute(&mut *tx)
@@ -41,6 +39,13 @@ impl JobsStore for SqliteJobsStore {
                 .bind(description)
                 .execute(&mut *tx)
                 .await?;
+            }
+            Job::DeleteRelease { id, tag } => {
+                sqlx::query("INSERT INTO delete_release_jobs (id, tag) VALUES (?, ?)")
+                    .bind(id)
+                    .bind(tag)
+                    .execute(&mut *tx)
+                    .await?;
             }
         }
 
@@ -99,10 +104,30 @@ impl JobsStore for SqliteJobsStore {
             return Err(PersistenceError::NotFound());
         }
 
-        let detail = sqlx::query(
+        if let Ok(detail) = sqlx::query(
             r#"
             SELECT milestone, candidate, description
             FROM create_release_jobs
+            WHERE id = ?
+            "#,
+        )
+        .bind(&id)
+        .fetch_one(&mut *tx)
+        .await
+        {
+            tx.commit().await?;
+            return Ok(Job::CreateRelease {
+                id,
+                milestone: detail.try_get("milestone")?,
+                candidate: detail.try_get("candidate")?,
+                description: detail.try_get("description")?,
+            });
+        }
+
+        let detail = sqlx::query(
+            r#"
+            SELECT tag
+            FROM delete_release_jobs
             WHERE id = ?
             "#,
         )
@@ -112,11 +137,9 @@ impl JobsStore for SqliteJobsStore {
 
         tx.commit().await?;
 
-        Ok(Job::CreateRelease {
+        Ok(Job::DeleteRelease {
             id,
-            milestone: detail.try_get("milestone")?,
-            candidate: detail.try_get("candidate")?,
-            description: detail.try_get("description")?,
+            tag: detail.try_get("tag")?,
         })
     }
 

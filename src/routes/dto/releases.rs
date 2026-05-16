@@ -39,3 +39,8 @@ pub struct CreateReleaseQuery {
     pub candidate: bool,
     pub description: Option<String>,
 }
+
+#[derive(Debug, serde::Deserialize, Serialize)]
+pub struct DeleteReleaseQuery {
+    pub tag: String,
+}
