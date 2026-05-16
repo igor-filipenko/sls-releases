@@ -13,9 +13,9 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { VersionLabel } from "@/components/ui/version";
+import { VersionLabel } from "@/components/sl/version";
 import { fetchReleases, type ReleaseRow } from "@/lib/api";
-import { HeaderWithFilter } from "@/components/ui/header";
+import { HeaderWithFilter } from "@/components/sl/header";
 import { loadReleaseFilter, saveReleaseFilter, type ReleaseFilter } from "@/lib/filter";
 
 export function ReleasesPage() {

@@ -14,8 +14,8 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { fetchModule, fetchModuleReleases, type Module, type ReleaseRow } from "@/lib/api";
-import { VersionLabel } from "@/components/ui/version";
-import { HeaderWithFilter } from "@/components/ui/header";
+import { VersionLabel } from "@/components/sl/version";
+import { HeaderWithFilter } from "@/components/sl/header";
 import { loadReleaseFilter, saveReleaseFilter, type ReleaseFilter } from "@/lib/filter";
 
 export function ModulePage() {
